@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CEO
+  MEMBER
+}
+
+enum Status {
+  NOT_STARTED
+  WORKING
+  DONE
+}
+
+enum EventType {
+  CREATED
+  STATUS_CHANGED
+  DUE_DATE_CHANGED
+  HANDED_OFF
+  ASSIGNED
+  COMPLETED
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  color     String
+  createdAt DateTime @default(now())
+  archived  Boolean  @default(false)
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  displayName   String
+  email         String   @unique
+  passwordHash  String
+  mustChangePw  Boolean  @default(true)
+  role          Role     @default(MEMBER)
+  jobTitle      String
+  functionGroup String
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model UserCompany {
+  userId    String
+  companyId String
+  @@id([userId, companyId])
+}
+
+model Task {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  companyId           String?
+  assigneeId          String?
+  status              Status    @default(NOT_STARTED)
+  priority            Int       @default(2)
+
+  createdAt           DateTime  @default(now())
+  createdById         String
+  originalDueAt       DateTime?
+  dueAt               DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+
+  parentTaskId        String?
+  handoffAt           DateTime?
+
+  archived            Boolean   @default(false)
+  recurringTemplateId String?
+
+  checklistItems      ChecklistItem[]
+  images              TaskImage[]
+  links               TaskLink[]
+  events              TaskEvent[]
+}
+
+model TaskEvent {
+  id        String    @id @default(cuid())
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actorId   String?
+  type      EventType
+  fromValue String?
+  toValue   String?
+  reason    String?
+  createdAt DateTime  @default(now())
+}
+
+model ChecklistItem {
+  id       String  @id @default(cuid())
+  taskId   String
+  task     Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label    String
+  done     Boolean @default(false)
+  position Int
+}
+
+model TaskImage {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  url    String
+}
+
+model TaskLink {
+  id     String  @id @default(cuid())
+  taskId String
+  task   Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  url    String
+  label  String?
+}
+
+model RecurringTemplate {
+  id                  String  @id @default(cuid())
+  title               String
+  description         String?
+  companyId           String
+  assigneeId          String?
+  priority            Int     @default(2)
+  frequency           String
+  weekdays            Int[]
+  dueOffsetHours      Int     @default(10)
+  checklistTemplateId String?
+  active              Boolean @default(true)
+}
+
+model HandoffRule {
+  id                  String  @id @default(cuid())
+  companyId           String
+  fromTitlePattern    String
+  fromAssigneeId      String
+  toAssigneeId        String
+  newTitlePrefix      String
+  dueAfterHours       Int     @default(48)
+  checklistTemplateId String?
+  active              Boolean @default(true)
+}
+
+model ChecklistTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  companyId String?
+  items     String[]
+}
+
+model Setting {
+  id                       String  @id @default("singleton")
+  handoffFlagHours         Int     @default(48)
+  requireReasonOnDueChange Boolean @default(true)
+  membersCanChangeDueDate  Boolean @default(true)
+  checklistDrivesProgress  Boolean @default(true)
+  membersSeeFunctionPeers  Boolean @default(true)
+}
