@@ -51,14 +51,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
+      .then(r => { console.log('[auth/me] status:', r.status); return r.ok ? r.json() : null })
       .then(data => {
+        console.log('[auth/me] data:', data)
         if (!data) { router.push('/login'); return }
         if (data.mustChangePw) { router.push('/change-password'); return }
         setMe(data)
         setLoading(false)
       })
-      .catch(() => router.push('/login'))
+      .catch(err => { console.error('[auth/me] error:', err); router.push('/login') })
 
     fetchCompanies()
   }, [])

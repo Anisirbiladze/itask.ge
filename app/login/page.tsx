@@ -24,7 +24,7 @@ export default function LoginPage() {
       if (data.mustChangePw) {
         router.push('/change-password')
       } else {
-        router.push('/')
+        router.push('/board')
       }
     } catch {
       setError('Network error. Please try again.')
