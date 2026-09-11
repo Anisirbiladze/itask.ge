@@ -9,30 +9,40 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!session.userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
   const { id } = await params
 
-  const task = await prisma.task.findUnique({
-    where: { id },
-    include: {
-      checklistItems: { orderBy: { position: 'asc' } },
-      images: true,
-      links: true,
-    },
-  })
+  // Batch 1: fetch task, events, and settings in parallel
+  const [task, events, settings] = await Promise.all([
+    prisma.task.findUnique({
+      where: { id },
+      include: {
+        checklistItems: { orderBy: { position: 'asc' } },
+        images: true,
+        links: true,
+      },
+    }),
+    prisma.taskEvent.findMany({ where: { taskId: id }, orderBy: { createdAt: 'asc' } }),
+    prisma.setting.findUnique({ where: { id: 'singleton' } }),
+  ])
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const events = await prisma.taskEvent.findMany({
-    where: { taskId: id },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  // Resolve actor names
+  // Batch 2: fetch all related entities in parallel
   const actorIds = [...new Set(events.filter(e => e.actorId).map(e => e.actorId as string))]
-  const actors = await prisma.user.findMany({
-    where: { id: { in: actorIds } },
-    select: { id: true, displayName: true },
-  })
-  const actorMap = Object.fromEntries(actors.map(a => [a.id, a.displayName]))
+  const [actors, parentTask, assignee, company, creator] = await Promise.all([
+    actorIds.length > 0
+      ? prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, displayName: true } })
+      : Promise.resolve([]),
+    task.parentTaskId
+      ? prisma.task.findUnique({ where: { id: task.parentTaskId }, select: { id: true, title: true } })
+      : Promise.resolve(null),
+    task.assigneeId
+      ? prisma.user.findUnique({ where: { id: task.assigneeId }, select: { id: true, displayName: true } })
+      : Promise.resolve(null),
+    task.companyId
+      ? prisma.company.findUnique({ where: { id: task.companyId }, select: { id: true, name: true, color: true } })
+      : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: task.createdById }, select: { id: true, displayName: true } }),
+  ])
 
-  const settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
+  const actorMap = Object.fromEntries(actors.map(a => [a.id, a.displayName]))
   const flagHours = settings?.handoffFlagHours ?? 48
   const now = new Date()
 
@@ -50,39 +60,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const total = checklistItems.length
   const done = checklistItems.filter((c) => c.done).length
   const checklistPct = total > 0 ? Math.round((done / total) * 100) : null
-
-  // Parent task info
-  let parentTask = null
-  if (task.parentTaskId) {
-    parentTask = await prisma.task.findUnique({
-      where: { id: task.parentTaskId },
-      select: { id: true, title: true },
-    })
-  }
-
-  // Assignee info
-  let assignee = null
-  if (task.assigneeId) {
-    assignee = await prisma.user.findUnique({
-      where: { id: task.assigneeId },
-      select: { id: true, displayName: true },
-    })
-  }
-
-  // Company info
-  let company = null
-  if (task.companyId) {
-    company = await prisma.company.findUnique({
-      where: { id: task.companyId },
-      select: { id: true, name: true, color: true },
-    })
-  }
-
-  // Creator
-  const creator = await prisma.user.findUnique({
-    where: { id: task.createdById },
-    select: { id: true, displayName: true },
-  })
 
   const dueDatePushCount = events.filter(e => e.type === 'DUE_DATE_CHANGED').length
 

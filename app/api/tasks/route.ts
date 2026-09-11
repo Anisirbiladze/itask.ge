@@ -11,42 +11,26 @@ export async function GET(req: NextRequest) {
   const assigneeId = searchParams.get('assigneeId')
   const filter = searchParams.get('filter') // 'stuck' | 'week' | 'unassigned'
 
-  // Build where clause based on role
   let where: Record<string, unknown> = { archived: false }
+  let settings: Awaited<ReturnType<typeof prisma.setting.findUnique>> = null
 
   if (session.role === 'MEMBER') {
-    // Get user's function group
-    const me = await prisma.user.findUnique({ where: { id: session.userId } })
-    const settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
-
-    // Always see own tasks
-    const ownTasksCondition = { assigneeId: session.userId }
-
-    // Handoff chain visibility
-    const handoffCondition = {
-      OR: [
-        { assigneeId: session.userId },
-        { parentTaskId: { not: null }, assigneeId: session.userId },
-      ]
-    }
-
-    if (settings?.membersSeeFunctionPeers && me) {
-      // Find peers in same function group
+    const [me, s] = await Promise.all([
+      prisma.user.findUnique({ where: { id: session.userId } }),
+      prisma.setting.findUnique({ where: { id: 'singleton' } }),
+    ])
+    settings = s
+    if (s?.membersSeeFunctionPeers && me) {
       const peers = await prisma.user.findMany({
         where: { functionGroup: me.functionGroup, archived: false, id: { not: session.userId } },
         select: { id: true },
       })
-      const peerIds = peers.map(p => p.id)
-      where = {
-        ...where,
-        OR: [
-          { assigneeId: session.userId },
-          { assigneeId: { in: peerIds } },
-        ]
-      }
+      where = { ...where, OR: [{ assigneeId: session.userId }, { assigneeId: { in: peers.map((p: { id: string }) => p.id) } }] }
     } else {
       where = { ...where, assigneeId: session.userId }
     }
+  } else {
+    settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
   }
 
   if (companyId) where.companyId = companyId
@@ -64,14 +48,10 @@ export async function GET(req: NextRequest) {
     where,
     orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
     include: {
-      checklistItems: { orderBy: { position: 'asc' } },
-      images: true,
-      links: true,
+      checklistItems: { select: { done: true } },
     },
   })
 
-  // Enhance with stuck/waiting status
-  const settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
   const flagHours = settings?.handoffFlagHours ?? 48
 
   const enhanced = tasks.map((t) => {
