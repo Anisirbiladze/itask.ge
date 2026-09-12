@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { useApp } from '@/components/AppShell'
 
 interface Company { id: string; name: string; color: string }
 
@@ -9,6 +10,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   onClose: () => void
   onCreated: () => void
 }) {
+  const { users: allUsers } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? '')
@@ -16,27 +18,22 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [dueAt, setDueAt] = useState('')
   const [priority, setPriority] = useState(2)
   const [checklistTemplateId, setChecklistTemplateId] = useState('')
-  const [users, setUsers] = useState<{ id: string; displayName: string }[]>([])
   const [checklistTemplates, setChecklistTemplates] = useState<{ id: string; name: string; items: string[] }[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const users = useMemo(
+    () => companyId ? allUsers.filter(u => u.companyIds.includes(companyId)) : allUsers,
+    [allUsers, companyId]
+  )
+
+  useEffect(() => {
+    if (assigneeId && !users.find(u => u.id === assigneeId)) setAssigneeId('')
+  }, [users, assigneeId])
+
   useEffect(() => {
     fetch('/api/checklist-templates').then(r => r.json()).then(setChecklistTemplates).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    const url = companyId
-      ? `/api/users?filter=active&companyId=${encodeURIComponent(companyId)}`
-      : '/api/users?filter=active'
-    fetch(url)
-      .then(r => r.json())
-      .then((data: { id: string; displayName: string }[]) => {
-        setUsers(data)
-        setAssigneeId(prev => data.find(u => u.id === prev) ? prev : '')
-      })
-      .catch(() => {})
-  }, [companyId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

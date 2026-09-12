@@ -15,17 +15,19 @@ export interface Me {
   companies: { id: string; name: string; color: string }[]
 }
 export interface Company { id: string; name: string; color: string; openCount: number }
+export interface AppUser { id: string; displayName: string; companyIds: string[] }
 
 interface AppCtx {
   me: Me | null
   companies: Company[]
+  users: AppUser[]
   activeCompany: string | null   // null = All
   setActiveCompany: (id: string | null) => void
   refreshCompanies: () => void
   openNewTask: (companyId?: string) => void
 }
 export const AppContext = createContext<AppCtx>({
-  me: null, companies: [], activeCompany: null,
+  me: null, companies: [], users: [], activeCompany: null,
   setActiveCompany: () => {}, refreshCompanies: () => {}, openNewTask: () => {},
 })
 export function useApp() { return useContext(AppContext) }
@@ -39,15 +41,17 @@ const NAV = [
   { href: '/settings', label: 'Settings', icon: SettingsIcon, ceoOnly: true },
 ]
 
-export default function AppShell({ children, initialMe, initialCompanies }: {
+export default function AppShell({ children, initialMe, initialCompanies, initialUsers }: {
   children: React.ReactNode
   initialMe: Me
   initialCompanies: Company[]
+  initialUsers: AppUser[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
   const [me] = useState<Me>(initialMe)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
+  const [users] = useState<AppUser[]>(initialUsers)
   const [activeCompany, setActiveCompany] = useState<string | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
@@ -73,7 +77,7 @@ export default function AppShell({ children, initialMe, initialCompanies }: {
   const dateStr = format(new Date(), 'EEEE, d MMMM')
 
   return (
-    <AppContext.Provider value={{ me, companies, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask }}>
+    <AppContext.Provider value={{ me, companies, users, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask }}>
       {/* Sidebar */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
