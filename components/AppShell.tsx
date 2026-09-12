@@ -138,7 +138,7 @@ export default function AppShell({ children, initialMe, initialCompanies }: {
             <p style={{ color: 'var(--muted)', fontSize: 13.5 }}>{dateStr}</p>
           </div>
           {me?.role === 'CEO' && (
-            <button onClick={() => openNewTask()} style={{ background: 'var(--ink)', color: '#fff', border: 0, borderRadius: 9, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, minHeight: 44 }}>
+            <button onClick={() => openNewTask(activeCompany ?? undefined)} style={{ background: 'var(--ink)', color: '#fff', border: 0, borderRadius: 9, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, minHeight: 44 }}>
               <PlusIcon /> New task
             </button>
           )}
