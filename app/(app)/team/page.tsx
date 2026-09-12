@@ -1,145 +1,57 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { Avatar, StatusPill } from '@/components/AppShell'
-import { formatDate } from '@/lib/utils'
+import { getSession } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import TeamClient, { type TeamData } from './TeamClient'
 
-interface TeamUser {
-  id: string
-  displayName: string
-  functionGroup: string
-  companies: { id: string; name: string; color: string }[]
-  tasks: { id: string; title: string; status: string; computedStatus: string; waitingHours: number | null; dueAt: string | null; company: { name: string; color: string } | null }[]
-  totalTasks: number
-  doneTasks: number
-  progressPct: number
-  isBehind: boolean
-  stuckCount: number
-}
-
-interface TeamData {
-  groups: Record<string, TeamUser[]>
-  summary: { doneToday: number; peopleBehind: number; stuckOver48h: number; unassigned: number }
-}
-
-const GROUP_ORDER = ['Video production', 'Design & post-production', 'Sales', 'Support', 'Product & systems', 'Admin', 'Other']
-
-export default function TeamPage() {
-  const [data, setData] = useState<TeamData | null>(null)
-  const [open, setOpen] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/team').then(r => r.json()).then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
-  }, [])
-
-  function toggle(id: string) {
-    setOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+export default async function TeamPage() {
+  const session = await getSession()
+  if (session.role !== 'CEO') {
+    return <p style={{ color: 'var(--stuck)' }}>CEO access required.</p>
   }
 
-  if (loading) return <p style={{ color: 'var(--muted)' }}>Loading…</p>
-  if (!data) return <p style={{ color: 'var(--stuck)' }}>Could not load team data. You may need CEO access.</p>
+  const now = new Date()
+  const [users, companies, allMemberships, settings, tasks, doneTodayCount] = await Promise.all([
+    prisma.user.findMany({ where: { archived: false }, orderBy: { name: 'asc' }, select: { id: true, name: true, displayName: true, jobTitle: true, functionGroup: true, role: true } }),
+    prisma.company.findMany({ where: { archived: false } }),
+    prisma.userCompany.findMany(),
+    prisma.setting.findUnique({ where: { id: 'singleton' } }),
+    prisma.task.findMany({ where: { archived: false, status: { not: 'DONE' } }, include: { checklistItems: { select: { done: true } } }, orderBy: { priority: 'desc' } }),
+    prisma.task.count({ where: { archived: false, status: 'DONE', completedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } }),
+  ])
 
-  const orderedGroups = GROUP_ORDER.filter(g => data.groups[g]?.length).map(g => [g, data.groups[g]] as [string, TeamUser[]])
-  const extraGroups = Object.entries(data.groups).filter(([g]) => !GROUP_ORDER.includes(g))
+  const companyMap = Object.fromEntries(companies.map(c => [c.id, c]))
+  const flagHours = settings?.handoffFlagHours ?? 48
 
-  return (
-    <div>
-      {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(168px,1fr))', gap: 10, marginBottom: 22 }}>
-        <SummaryCard value={data.summary.doneToday} label="tasks done today" />
-        <SummaryCard value={data.summary.peopleBehind} label="people behind" warn={data.summary.peopleBehind > 0} />
-        <SummaryCard value={data.summary.stuckOver48h} label="stuck over 48h" warn={data.summary.stuckOver48h > 0} />
-        <SummaryCard value={data.summary.unassigned} label="tasks unassigned" />
-      </div>
+  const result = users.map(u => {
+    const userTasks = tasks.filter(t => t.assigneeId === u.id)
+    const userCompanies = allMemberships.filter(m => m.userId === u.id).map(m => companyMap[m.companyId]).filter(Boolean)
+    const total = userTasks.length
+    const done = userTasks.filter(t => t.status === 'DONE').length
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0
+    const isBehind = userTasks.some(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'DONE')
+    const stuckCount = userTasks.filter(t => t.handoffAt && t.status !== 'DONE' && Math.floor((now.getTime() - new Date(t.handoffAt).getTime()) / (1000 * 60 * 60)) > flagHours).length
+    return {
+      id: u.id, displayName: u.displayName, functionGroup: u.functionGroup,
+      companies: userCompanies.map(c => ({ id: c.id, name: c.name, color: c.color })),
+      tasks: userTasks.map(t => {
+        let computedStatus: string = t.status, waitingHours: number | null = null
+        if (t.handoffAt && t.status !== 'DONE') {
+          const h = Math.floor((now.getTime() - new Date(t.handoffAt).getTime()) / (1000 * 60 * 60))
+          if (h > flagHours) { computedStatus = 'WAITING'; waitingHours = h }
+        }
+        const co = t.companyId ? companyMap[t.companyId] : null
+        return { id: t.id, title: t.title, status: t.status, computedStatus, waitingHours, dueAt: t.dueAt?.toISOString() ?? null, company: co ? { name: co.name, color: co.color } : null }
+      }),
+      totalTasks: total, doneTasks: done, progressPct: pct, isBehind, stuckCount,
+    }
+  })
 
-      {[...orderedGroups, ...extraGroups].map(([group, users]) => (
-        <div key={group}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', padding: '0 3px 7px', borderBottom: '1px solid var(--line)', margin: '20px 0 9px' }}>
-            {group}
-          </div>
-          {users.map(u => (
-            <PersonRow key={u.id} user={u} isOpen={open.has(u.id)} onToggle={() => toggle(u.id)} />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
+  const groups: TeamData['groups'] = {}
+  for (const u of result) { const g = u.functionGroup || 'Other'; if (!groups[g]) groups[g] = []; groups[g].push(u) }
 
-function SummaryCard({ value, label, warn }: { value: number; label: string; warn?: boolean }) {
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '14px 15px' }}>
-      <b style={{ display: 'block', fontSize: 25, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15, color: warn ? 'var(--stuck)' : undefined }}>{value}</b>
-      <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{label}</span>
-    </div>
-  )
-}
+  const unassigned = tasks.filter(t => !t.assigneeId).length
+  const peopleBehind = result.filter(u => u.isBehind).length
+  const stuckOver48h = tasks.filter(t => t.handoffAt && t.status !== 'DONE' && Math.floor((now.getTime() - new Date(t.handoffAt).getTime()) / (1000 * 60 * 60)) > flagHours).length
 
-function PersonRow({ user, isOpen, onToggle }: { user: TeamUser; isOpen: boolean; onToggle: () => void }) {
-  const mainColor = user.companies[0]?.color ?? 'var(--done)'
-  const pct = user.progressPct
-  const circumference = 2 * Math.PI * 14
-  const dashOffset = circumference * (1 - pct / 100)
-
-  return (
-    <article style={{
-      background: 'var(--surface)', border: `1px solid var(--line)`,
-      borderLeft: user.isBehind ? '3px solid var(--working)' : '1px solid var(--line)',
-      borderRadius: 11, marginBottom: 7, overflow: 'hidden',
-    }}>
-      <button onClick={onToggle} style={{
-        width: '100%', background: 'none', border: 0, textAlign: 'left', padding: '13px 14px',
-        display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 13, alignItems: 'center', cursor: 'pointer',
-      }}>
-        <span>
-          <span style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-            {user.displayName}
-            {/* Company dots */}
-            <span style={{ display: 'inline-flex', gap: 3, marginLeft: 3, verticalAlign: '1px' }}>
-              {user.companies.map(c => (
-                <span key={c.id} style={{ width: 7, height: 7, borderRadius: '50%', background: c.color, display: 'inline-block' }} />
-              ))}
-            </span>
-          </span>
-          <span style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3, display: 'block' }}>
-            {user.doneTasks} of {user.totalTasks} tasks done
-            {user.isBehind && <b style={{ color: 'var(--working)', fontWeight: 600 }}> · behind</b>}
-            {user.stuckCount > 0 && <b style={{ color: 'var(--stuck)', fontWeight: 600 }}> · {user.stuckCount} stuck</b>}
-          </span>
-        </span>
-
-        {/* Progress ring */}
-        <span style={{ position: 'relative', width: 34, height: 34, flexShrink: 0, display: 'block' }}>
-          <svg width={34} height={34} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
-            <circle cx={17} cy={17} r={14} fill="none" stroke="#EAEEF2" strokeWidth={4} />
-            <circle cx={17} cy={17} r={14} fill="none" stroke={user.isBehind ? 'var(--working)' : mainColor} strokeWidth={4} strokeLinecap="round"
-              strokeDasharray={circumference} strokeDashoffset={dashOffset} style={{ transition: 'stroke-dashoffset .3s' }} />
-          </svg>
-          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700, fontStyle: 'normal' }}>
-            {pct}%
-          </span>
-        </span>
-
-        {/* Chevron */}
-        <span style={{ width: 11, height: 11, borderRight: '2px solid #A6AFB9', borderBottom: '2px solid #A6AFB9', transform: isOpen ? 'rotate(-135deg)' : 'rotate(45deg)', marginRight: 3, display: 'block', transition: 'transform .18s' }} />
-      </button>
-
-      {isOpen && (
-        <div style={{ padding: '0 14px 13px', borderTop: '1px solid var(--line-soft)' }}>
-          {user.tasks.map(t => (
-            <div key={t.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 14 }}>
-              {t.company && (
-                <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 5, color: '#fff', background: t.company.color }}>{t.company.name}</span>
-              )}
-              <span style={{ color: t.status === 'DONE' ? 'var(--muted)' : undefined, textDecoration: t.status === 'DONE' ? 'line-through' : undefined }}>
-                {t.title}
-              </span>
-              <StatusPill status={t.computedStatus} waitingHours={t.waitingHours} />
-            </div>
-          ))}
-          {user.tasks.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 13.5, paddingTop: 10 }}>No open tasks.</p>}
-        </div>
-      )}
-    </article>
-  )
+  const data: TeamData = { groups, summary: { doneToday: doneTodayCount, peopleBehind, stuckOver48h, unassigned } }
+  return <TeamClient initialData={data} />
 }

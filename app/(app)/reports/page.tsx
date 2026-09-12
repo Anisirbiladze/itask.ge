@@ -1,152 +1,79 @@
-'use client'
-import { useEffect, useState } from 'react'
+import { getSession } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import ReportsClient from './ReportsClient'
+import { differenceInDays, subDays } from 'date-fns'
 
-interface ReportData {
-  summary: { done: number; onTimePct: number; pushes: number; avgLate: number }
-  byPerson: { userId: string; name: string; done: number; onTimePct: number; avgLate: number; pushes: number; open: number }[]
-  byCompany: { companyId: string; name: string; color: string; done: number; onTimePct: number; pushes: number; open: number; people: number }[]
-}
-
-export default function ReportsPage() {
-  const [data, setData] = useState<ReportData | null>(null)
-  const [period, setPeriod] = useState('last30')
-  const [companyId, setCompanyId] = useState('')
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/companies').then(r => r.json()).then(setCompanies).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    setLoading(true)
-    const p = new URLSearchParams({ period })
-    if (companyId) p.set('companyId', companyId)
-    fetch(`/api/reports?${p}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [period, companyId])
-
-  function exportCSV() {
-    if (!data) return
-    const rows = [
-      ['Person', 'Done', 'On time %', 'Avg late (days)', 'Pushes', 'Open now'],
-      ...data.byPerson.map(p => [p.name, p.done, p.onTimePct, p.avgLate, p.pushes, p.open]),
-    ]
-    const csv = rows.map(r => r.join(',')).join('\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-    a.download = `itask-report-${period}.csv`
-    a.click()
+export default async function ReportsPage() {
+  const session = await getSession()
+  if (!session.userId || session.role !== 'CEO') {
+    return <p style={{ color: 'var(--stuck)' }}>CEO access required.</p>
   }
 
-  const selStyle: React.CSSProperties = {
-    fontSize: 14, color: 'var(--ink)', fontWeight: 500, background: 'var(--surface)',
-    border: '1px solid var(--line)', borderRadius: 9, padding: '9px 30px 9px 12px',
-    appearance: 'none', cursor: 'pointer', minHeight: 44,
-    backgroundImage: "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B7480' stroke-width='1.7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",
-    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 11px center',
+  const now = new Date()
+  const from = subDays(now, 30)
+
+  const [completedTasks, pushEvents, openTasks, users, companies] = await Promise.all([
+    prisma.task.findMany({ where: { archived: false, completedAt: { gte: from, lte: now } }, select: { id: true, assigneeId: true, companyId: true, completedAt: true, originalDueAt: true, dueAt: true } }),
+    prisma.taskEvent.findMany({ where: { type: 'DUE_DATE_CHANGED', createdAt: { gte: from, lte: now } }, select: { taskId: true, actorId: true, createdAt: true } }),
+    prisma.task.findMany({ where: { archived: false, status: { not: 'DONE' } }, select: { id: true, assigneeId: true, companyId: true } }),
+    prisma.user.findMany({ where: { archived: false }, select: { id: true, displayName: true } }),
+    prisma.company.findMany({ where: { archived: false }, select: { id: true, name: true, color: true } }),
+  ])
+
+  const userMap = Object.fromEntries(users.map((u: { id: string; displayName: string }) => [u.id, u.displayName]))
+  const companyMap = Object.fromEntries(companies.map((c: { id: string; name: string; color: string }) => [c.id, c]))
+
+  const personMap: Record<string, { done: number; onTime: number; lateDays: number[]; pushes: number; open: number }> = {}
+  for (const t of completedTasks) {
+    const uid = t.assigneeId; if (!uid) continue
+    if (!personMap[uid]) personMap[uid] = { done: 0, onTime: 0, lateDays: [], pushes: 0, open: 0 }
+    personMap[uid].done++
+    if (t.completedAt && t.originalDueAt) {
+      if (new Date(t.completedAt) <= new Date(t.originalDueAt)) personMap[uid].onTime++
+      else personMap[uid].lateDays.push(differenceInDays(new Date(t.completedAt), new Date(t.originalDueAt)))
+    }
   }
+  for (const e of pushEvents) {
+    const t = completedTasks.find((t: { id: string }) => t.id === e.taskId) || openTasks.find((t: { id: string }) => t.id === e.taskId)
+    const uid = (t as { assigneeId?: string | null })?.assigneeId ?? e.actorId; if (!uid) continue
+    if (!personMap[uid]) personMap[uid] = { done: 0, onTime: 0, lateDays: [], pushes: 0, open: 0 }
+    personMap[uid].pushes++
+  }
+  for (const t of openTasks) {
+    const uid = t.assigneeId; if (!uid) continue
+    if (!personMap[uid]) personMap[uid] = { done: 0, onTime: 0, lateDays: [], pushes: 0, open: 0 }
+    personMap[uid].open++
+  }
+  const byPerson = Object.entries(personMap).map(([uid, s]) => ({ userId: uid, name: userMap[uid] ?? uid, done: s.done, onTimePct: s.done > 0 ? Math.round((s.onTime / s.done) * 100) : 0, avgLate: s.lateDays.length > 0 ? +(s.lateDays.reduce((a: number, b: number) => a + b, 0) / s.lateDays.length).toFixed(1) : 0, pushes: s.pushes, open: s.open })).sort((a, b) => b.onTimePct - a.onTimePct)
 
-  return (
-    <div>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 9, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={period} onChange={e => setPeriod(e.target.value)} style={selStyle}>
-          <option value="last30">Last 30 days</option>
-          <option value="week">This week</option>
-          <option value="quarter">This quarter</option>
-        </select>
-        <select value={companyId} onChange={e => setCompanyId(e.target.value)} style={selStyle}>
-          <option value="">All companies</option>
-          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <button onClick={exportCSV} style={{ ...selStyle, padding: '9px 16px', fontWeight: 600 }}>
-          Export CSV
-        </button>
-      </div>
+  const coMap: Record<string, { done: number; onTime: number; pushes: number; open: number; people: Set<string> }> = {}
+  for (const t of completedTasks) {
+    const cid = t.companyId; if (!cid) continue
+    if (!coMap[cid]) coMap[cid] = { done: 0, onTime: 0, pushes: 0, open: 0, people: new Set() }
+    coMap[cid].done++
+    if (t.completedAt && t.originalDueAt && new Date(t.completedAt) <= new Date(t.originalDueAt)) coMap[cid].onTime++
+    if (t.assigneeId) coMap[cid].people.add(t.assigneeId)
+  }
+  for (const e of pushEvents) {
+    const t = completedTasks.find((t: { id: string }) => t.id === e.taskId) || openTasks.find((t: { id: string }) => t.id === e.taskId)
+    const cid = (t as { companyId?: string | null })?.companyId; if (!cid) continue
+    if (!coMap[cid]) coMap[cid] = { done: 0, onTime: 0, pushes: 0, open: 0, people: new Set() }
+    coMap[cid].pushes++
+  }
+  for (const t of openTasks) {
+    const cid = t.companyId; if (!cid) continue
+    if (!coMap[cid]) coMap[cid] = { done: 0, onTime: 0, pushes: 0, open: 0, people: new Set() }
+    coMap[cid].open++
+    if (t.assigneeId) coMap[cid].people.add(t.assigneeId)
+  }
+  const byCompany = Object.entries(coMap).map(([cid, s]) => ({ companyId: cid, name: companyMap[cid]?.name ?? cid, color: companyMap[cid]?.color ?? '#888', done: s.done, onTimePct: s.done > 0 ? Math.round((s.onTime / s.done) * 100) : 0, pushes: s.pushes, open: s.open, people: s.people.size }))
 
-      {loading ? <p style={{ color: 'var(--muted)' }}>Loading…</p> : !data ? (
-        <p style={{ color: 'var(--stuck)' }}>Could not load reports. CEO access required.</p>
-      ) : (
-        <>
-          {/* Summary cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(168px,1fr))', gap: 10, marginBottom: 22 }}>
-            <div style={cardStyle}><b style={bigNum}>{data.summary.done}</b><span style={cardLbl}>tasks completed</span></div>
-            <div style={{ ...cardStyle }}><b style={{ ...bigNum, color: data.summary.onTimePct >= 75 ? 'var(--done)' : data.summary.onTimePct >= 50 ? 'var(--working)' : 'var(--stuck)' }}>{data.summary.onTimePct}%</b><span style={cardLbl}>finished on time</span></div>
-            <div style={cardStyle}><b style={{ ...bigNum, color: 'var(--stuck)' }}>{data.summary.pushes}</b><span style={cardLbl}>due dates pushed</span></div>
-            <div style={cardStyle}><b style={bigNum}>{data.summary.avgLate}</b><span style={cardLbl}>avg days late</span><i style={{ display: 'block', fontSize: 11.5, color: 'var(--muted)', marginTop: 5 }}>when late</i></div>
-          </div>
+  const totalDone = completedTasks.length
+  const totalOnTime = completedTasks.filter((t: { completedAt: Date | null; originalDueAt: Date | null }) => t.completedAt && t.originalDueAt && new Date(t.completedAt) <= new Date(t.originalDueAt)).length
+  const onTimePct = totalDone > 0 ? Math.round((totalOnTime / totalDone) * 100) : 0
+  const lateTasks = completedTasks.filter((t: { completedAt: Date | null; originalDueAt: Date | null }) => t.completedAt && t.originalDueAt && new Date(t.completedAt) > new Date(t.originalDueAt))
+  const avgLate = lateTasks.length > 0 ? +(lateTasks.reduce((s: number, t: { completedAt: Date | null; originalDueAt: Date | null }) => s + differenceInDays(new Date(t.completedAt!), new Date(t.originalDueAt!)), 0) / lateTasks.length).toFixed(1) : 0
 
-          {/* By person */}
-          <h2 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', margin: '24px 0 10px' }}>By person</h2>
-          <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 600 }}>
-              <thead><tr>
-                {['Person','Done','On time','Avg late','Pushes','Open now'].map(h => <th key={h} style={thStyle}>{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {data.byPerson.map(p => (
-                  <tr key={p.userId}>
-                    <td style={tdStyle}>{p.name}</td>
-                    <td style={tdStyle}>{p.done}</td>
-                    <td style={tdStyle}><OnTimeCell pct={p.onTimePct} /></td>
-                    <td style={tdStyle}>{p.avgLate > 0 ? `${p.avgLate}d` : '—'}</td>
-                    <td style={{ ...tdStyle, fontWeight: 600, color: p.pushes >= 5 ? 'var(--stuck)' : undefined }}>{p.pushes}</td>
-                    <td style={tdStyle}>{p.open}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* By company */}
-          <h2 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', margin: '24px 0 10px' }}>By company</h2>
-          <div style={{ overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 500 }}>
-              <thead><tr>
-                {['Company','Done','On time','Pushes','Open now','People'].map(h => <th key={h} style={thStyle}>{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {data.byCompany.map(c => (
-                  <tr key={c.companyId}>
-                    <td style={tdStyle}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                        {c.name}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>{c.done}</td>
-                    <td style={tdStyle}><OnTimeCell pct={c.onTimePct} /></td>
-                    <td style={{ ...tdStyle, fontWeight: 600, color: c.pushes >= 10 ? 'var(--stuck)' : undefined }}>{c.pushes}</td>
-                    <td style={tdStyle}>{c.open}</td>
-                    <td style={tdStyle}>{c.people}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
-  )
+  const initialData = { summary: { done: totalDone, onTimePct, pushes: pushEvents.length, avgLate }, byPerson, byCompany }
+  return <ReportsClient initialData={initialData} />
 }
-
-function OnTimeCell({ pct }: { pct: number }) {
-  const color = pct >= 75 ? 'var(--done)' : pct >= 50 ? 'var(--working)' : 'var(--stuck)'
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 132 }}>
-      <span style={{ flex: 1, height: 6, background: 'var(--line-soft)', borderRadius: 3, overflow: 'hidden' }}>
-        <i style={{ display: 'block', height: '100%', borderRadius: 3, background: color, width: `${pct}%` }} />
-      </span>
-      <b style={{ fontSize: 13, fontWeight: 600, minWidth: 34, textAlign: 'right' }}>{pct}%</b>
-    </span>
-  )
-}
-
-const cardStyle: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '14px 15px' }
-const bigNum: React.CSSProperties = { display: 'block', fontSize: 25, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15 }
-const cardLbl: React.CSSProperties = { fontSize: 12.5, color: 'var(--muted)' }
-const thStyle: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }
-const tdStyle: React.CSSProperties = { padding: '11px 12px', borderBottom: '1px solid var(--line-soft)', verticalAlign: 'middle' }
