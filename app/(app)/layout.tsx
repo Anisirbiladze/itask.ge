@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const companyIds = memberships.map((m: { companyId: string }) => m.companyId)
   const countMap = Object.fromEntries(counts.map((c: { companyId: string | null; _count: { id: number } }) => [c.companyId!, c._count.id]))
-  const allCompanies: Company[] = companies.map((c: { id: string; name: string; color: string }) => ({ ...c, openCount: countMap[c.id] ?? 0 }))
+  const allCompanies: Company[] = companies.map((c: { id: string; name: string; color: string; accentInk: string; accentText: string; bgTint: string; surfaceTint: string; accentTop: string; accentRgb: string; logoUrl: string | null; markUrl: string | null; logoLightUrl: string | null }) => ({ ...c, openCount: countMap[c.id] ?? 0 }))
   const userCompanies = allCompanies.filter(c => companyIds.includes(c.id))
 
   const enrichedUsers = allUsers.map((u: { id: string; displayName: string }) => ({

@@ -14,7 +14,12 @@ export interface Me {
   functionGroup: string
   companies: { id: string; name: string; color: string }[]
 }
-export interface Company { id: string; name: string; color: string; openCount: number }
+export interface Company {
+  id: string; name: string; color: string; openCount: number
+  accentInk: string; accentText: string; bgTint: string; surfaceTint: string
+  accentTop: string; accentRgb: string
+  logoUrl?: string | null; markUrl?: string | null; logoLightUrl?: string | null
+}
 export interface AppUser { id: string; displayName: string; companyIds: string[] }
 
 interface AppCtx {
@@ -56,6 +61,28 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
 
+  useEffect(() => {
+    const co = activeCompany ? companies.find(c => c.id === activeCompany) : null
+    const r = document.documentElement.style
+    if (co) {
+      r.setProperty('--paper',       co.bgTint)
+      r.setProperty('--surface',     co.surfaceTint)
+      r.setProperty('--accent',      co.color)
+      r.setProperty('--accent-top',  co.accentTop)
+      r.setProperty('--accent-ink',  co.accentInk)
+      r.setProperty('--accent-text', co.accentText)
+      r.setProperty('--accent-rgb',  co.accentRgb)
+    } else {
+      r.setProperty('--paper',       '#F4F6F8')
+      r.setProperty('--surface',     '#FFFFFF')
+      r.setProperty('--accent',      '#12181F')
+      r.setProperty('--accent-top',  '#222C36')
+      r.setProperty('--accent-ink',  '#FFFFFF')
+      r.setProperty('--accent-text', '#12181F')
+      r.setProperty('--accent-rgb',  '18,24,31')
+    }
+  }, [activeCompany, companies])
+
   function fetchCompanies() {
     fetch('/api/companies')
       .then(r => r.json())
@@ -84,11 +111,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         background: 'var(--nav)', padding: '18px 12px',
         display: 'flex', flexDirection: 'column', gap: 4, zIndex: 40,
       }} className="sidebar">
-        {/* Brand */}
-        <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em', padding: '4px 10px 16px', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'block', transform: 'rotate(45deg)', flexShrink: 0 }} />
-          itask.ge
-        </div>
+        {/* Brand / Logo slot */}
+        <SidebarBrand activeCompany={activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null} />
 
         {/* Nav */}
         {visibleNav.map(n => {
@@ -142,8 +166,14 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
             <p style={{ color: 'var(--muted)', fontSize: 13.5 }}>{dateStr}</p>
           </div>
           {me?.role === 'CEO' && (
-            <button onClick={() => openNewTask(activeCompany ?? undefined)} style={{ background: 'var(--ink)', color: '#fff', border: 0, borderRadius: 9, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, minHeight: 44 }}>
-              <PlusIcon /> New task
+            <button
+              onClick={() => openNewTask(activeCompany ?? undefined)}
+              className={`pbtn${activeCompany && companies.find(c => c.id === activeCompany)?.accentInk === '#12181F' ? ' onlight' : ''}`}
+            >
+              <span className="lead">
+                <span className="ico"><PlusIcon /></span>
+                New task
+              </span>
             </button>
           )}
         </div>
@@ -191,6 +221,28 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   )
 }
 
+/* ── Sidebar brand slot ──────────────────────────────────────────── */
+function SidebarBrand({ activeCompany }: { activeCompany: Company | null }) {
+  if (!activeCompany) {
+    return (
+      <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em', padding: '4px 10px 16px', display: 'flex', alignItems: 'center', gap: 9 }}>
+        <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'block', transform: 'rotate(45deg)', flexShrink: 0 }} />
+        itask.ge
+      </div>
+    )
+  }
+  return (
+    <div style={{ padding: '4px 10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {activeCompany.logoUrl ? (
+        <img src={activeCompany.logoUrl} alt={activeCompany.name} style={{ maxHeight: 26, maxWidth: 160, objectFit: 'contain', objectPosition: 'left' }} />
+      ) : (
+        <span style={{ fontSize: 16, fontWeight: 700, color: activeCompany.accentText }}>{activeCompany.name}</span>
+      )}
+      <span style={{ fontSize: 11, color: '#66707C' }}>itask.ge</span>
+    </div>
+  )
+}
+
 /* ── Company filter ───────────────────────────────────────────────── */
 function CompanyFilter({ companies, active, onChange }: { companies: Company[], active: string | null, onChange: (id: string | null) => void }) {
   const totalOpen = companies.reduce((s, c) => s + c.openCount, 0)
@@ -222,18 +274,19 @@ export function Avatar({ name, size = 27 }: { name: string; size?: number }) {
 }
 
 /* ── Status pill ──────────────────────────────────────────────────── */
-export function StatusPill({ status, waitingHours }: { status: string; waitingHours?: number | null }) {
-  const map: Record<string, [string, string]> = {
-    NOT_STARTED: ['#B4BCC5', 'Not started'],
-    WORKING:     ['#E0A020', 'Working on it'],
-    DONE:        ['#2E9E63', 'Done'],
-    WAITING:     ['#DC4A3D', `Waiting ${waitingHours ?? 0}h`],
-  }
-  const [bg, label] = map[status] ?? ['#B4BCC5', status]
+const STATUS_CLASS: Record<string, string> = {
+  NOT_STARTED: 'idle', WORKING: 'working', DONE: 'done', WAITING: 'stuck',
+}
+const STATUS_LABEL: Record<string, string> = {
+  NOT_STARTED: 'Not started', WORKING: 'Working on it', DONE: 'Done',
+}
+export function StatusPill({ status, waitingHours, onClick }: { status: string; waitingHours?: number | null; onClick?: () => void }) {
+  const cls = STATUS_CLASS[status] ?? 'idle'
+  const label = status === 'WAITING' ? `Waiting ${waitingHours ?? 0}h` : (STATUS_LABEL[status] ?? status)
   return (
-    <span style={{ display: 'inline-block', textAlign: 'center', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 6, whiteSpace: 'nowrap', minWidth: 104, background: bg }}>
+    <button className={`st ${cls}`} onClick={onClick} type="button" style={{ pointerEvents: onClick ? 'auto' : 'none' }}>
       {label}
-    </span>
+    </button>
   )
 }
 

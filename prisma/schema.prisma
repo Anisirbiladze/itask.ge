@@ -29,11 +29,24 @@ enum EventType {
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  color     String
-  createdAt DateTime @default(now())
-  archived  Boolean  @default(false)
+  id          String   @id @default(cuid())
+  name        String
+  slug        String?  @unique
+  color       String
+
+  accentInk   String   @default("#FFFFFF")
+  accentText  String   @default("#12181F")
+  bgTint      String   @default("#F4F6F8")
+  surfaceTint String   @default("#FFFFFF")
+  accentTop   String   @default("#222C36")
+  accentRgb   String   @default("18,24,31")
+
+  logoUrl     String?
+  markUrl     String?
+  logoLightUrl String?
+
+  createdAt   DateTime @default(now())
+  archived    Boolean  @default(false)
 }
 
 model User {

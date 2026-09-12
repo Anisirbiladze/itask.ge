@@ -19,7 +19,7 @@ export interface Task {
   checklistTotal: number
   checklistDone: number
   createdAt: string
-  company?: { id: string; name: string; color: string } | null
+  company?: { id: string; name: string; color: string; accentInk: string; accentText: string } | null
   assignee?: { id: string; displayName: string } | null
 }
 
@@ -27,7 +27,9 @@ interface GroupedSection {
   key: string
   label: string
   color: string
+  accentText: string
   tasks: Task[]
+  openCount: number
   stuckCount: number
 }
 
@@ -68,7 +70,7 @@ export default function BoardClient({
 
   const augmented: Task[] = useMemo(() => filteredTasks.map(t => ({
     ...t,
-    company: companies.find(c => c.id === t.companyId) ?? null,
+    company: (() => { const co = companies.find(c => c.id === t.companyId); return co ? { id: co.id, name: co.name, color: co.color, accentInk: co.accentInk, accentText: co.accentText } : null })(),
     assignee: users.find(u => u.id === t.assigneeId) ?? null,
   })), [filteredTasks, companies, users])
 
@@ -78,10 +80,12 @@ export default function BoardClient({
     const filterCos = activeCompany ? companies.filter(c => c.id === activeCompany) : companies
     sections = filterCos.map(c => {
       const ctasks = augmented.filter(t => t.companyId === c.id)
+      const openTasks = ctasks.filter(t => t.status !== 'DONE')
       return {
-        key: c.id, label: c.name, color: c.color,
+        key: c.id, label: c.name, color: c.color, accentText: c.accentText,
         tasks: ctasks,
-        stuckCount: ctasks.filter(t => t.computedStatus === 'WAITING' || (t.status === 'WORKING' && t.dueAt && new Date(t.dueAt) < new Date())).length,
+        openCount: openTasks.length,
+        stuckCount: openTasks.filter(t => t.computedStatus === 'WAITING' || (t.status === 'WORKING' && t.dueAt && new Date(t.dueAt) < new Date())).length,
       }
     })
   } else {
@@ -95,14 +99,16 @@ export default function BoardClient({
     for (const u of users) {
       if (!byPerson[u.id]?.length) continue
       const ptasks = byPerson[u.id]
+      const openPtasks = ptasks.filter(t => t.status !== 'DONE')
       personSections.push({
-        key: u.id, label: u.displayName, color: '#6B7480',
-        tasks: ptasks,
-        stuckCount: ptasks.filter(t => t.computedStatus === 'WAITING').length,
+        key: u.id, label: u.displayName, color: '#6B7480', accentText: 'var(--muted)',
+        tasks: ptasks, openCount: openPtasks.length,
+        stuckCount: openPtasks.filter(t => t.computedStatus === 'WAITING').length,
       })
     }
     if (byPerson['__unassigned']?.length) {
-      personSections.push({ key: '__unassigned', label: 'Unassigned', color: '#B4BCC5', tasks: byPerson['__unassigned'], stuckCount: 0 })
+      const ut = byPerson['__unassigned']
+      personSections.push({ key: '__unassigned', label: 'Unassigned', color: '#B4BCC5', accentText: 'var(--muted)', tasks: ut, openCount: ut.filter(t => t.status !== 'DONE').length, stuckCount: 0 })
     }
     sections = personSections
   }
@@ -160,40 +166,46 @@ function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
   const stuckLabel = section.stuckCount > 0 ? ` · ${section.stuckCount} stuck` : ''
   return (
     <section style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 9, paddingLeft: 2, color: section.color }}>
-        {section.label}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 9, paddingLeft: 2 }}>
+        <span style={{ color: section.accentText }}>{section.label}</span>
         <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>
-          {section.tasks.length} task{section.tasks.length !== 1 ? 's' : ''}{stuckLabel}
+          {section.openCount} open{stuckLabel}
         </span>
       </div>
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 700 }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Task</th>
-              {groupBy === 'company' ? <th style={thStyle}>Owner</th> : <th style={thStyle}>Company</th>}
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Timeline</th>
-              <th style={thStyle}>Due</th>
-              <th style={thStyle}>Priority</th>
-            </tr>
-          </thead>
-          <tbody>
-            {section.tasks.map(task => (
-              <TaskRow key={task.id} task={task} groupBy={groupBy} companyColor={section.color} onClick={() => onRowClick(task)} />
-            ))}
-            {onAddTask && (
-              <tr onClick={onAddTask} style={{ cursor: 'pointer' }}>
-                <td colSpan={6} style={{ padding: '9px 16px', color: 'var(--muted)', fontSize: 13.5 }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>
-                  + Add task{groupBy === 'company' ? ` to ${section.label}` : ''}
-                </td>
+      {section.tasks.length === 0 ? (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '28px 24px', color: 'var(--muted)', fontSize: 13.5, textAlign: 'center' }}>
+          No tasks yet.
+          {onAddTask && <button onClick={onAddTask} style={{ marginLeft: 8, background: 'none', border: 0, color: 'var(--accent-text)', fontWeight: 600, cursor: 'pointer', fontSize: 13.5 }}>+ Add one</button>}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 700 }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Task</th>
+                {groupBy === 'company' ? <th style={thStyle}>Owner</th> : <th style={thStyle}>Company</th>}
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Timeline</th>
+                <th style={thStyle}>Due</th>
+                <th style={thStyle}>Priority</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {section.tasks.map(task => (
+                <TaskRow key={task.id} task={task} groupBy={groupBy} companyColor={section.color} onClick={() => onRowClick(task)} />
+              ))}
+              {onAddTask && (
+                <tr onClick={onAddTask} style={{ cursor: 'pointer' }}>
+                  <td colSpan={6} style={{ padding: '9px 16px', color: 'var(--muted)', fontSize: 13.5 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>                    + Add task{groupBy === 'company' ? ` to ${section.label}` : ''}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   )
 }
@@ -201,12 +213,11 @@ function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
 function TaskRow({ task, groupBy, companyColor, onClick }: { task: Task; groupBy: 'company' | 'person'; companyColor: string; onClick: () => void }) {
   const late = task.dueAt && isLate(task.dueAt) && task.status !== 'DONE'
   const pct = task.checklistPct ?? (task.status === 'DONE' ? 100 : task.status === 'WORKING' ? 50 : 0)
+  const barColor = task.status === 'DONE' ? '#2E9E63' : companyColor
   return (
-    <tr onClick={onClick} style={{ cursor: 'pointer' }}
-      onMouseEnter={e => { for (const td of e.currentTarget.querySelectorAll('td')) (td as HTMLElement).style.background = '#FAFBFC' }}
-      onMouseLeave={e => { for (const td of e.currentTarget.querySelectorAll('td')) (td as HTMLElement).style.background = '' }}>
+    <tr onClick={onClick} className="task-row">
       <td style={{ ...tdStyle, paddingLeft: 0, position: 'relative', fontWeight: 500, minWidth: 230 }}>
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: companyColor }} />
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--accent)', borderRadius: '0 2px 2px 0' }} />
         <span style={{ paddingLeft: 16 }}>{task.title}</span>
       </td>
       <td style={tdStyle}>
@@ -219,12 +230,12 @@ function TaskRow({ task, groupBy, companyColor, onClick }: { task: Task; groupBy
           ) : <span style={{ color: 'var(--muted)', fontSize: 13 }}>—</span>
         ) : (
           task.company ? (
-            <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 5, color: '#fff', background: task.company.color }}>{task.company.name}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, color: task.company.accentInk, background: task.company.color }}>{task.company.name}</span>
           ) : <span style={{ color: 'var(--muted)' }}>—</span>
         )}
       </td>
       <td style={tdStyle}><StatusPill status={task.computedStatus} waitingHours={task.waitingHours} /></td>
-      <td style={tdStyle}><TimelineBar pct={pct} color={companyColor} /></td>
+      <td style={tdStyle}>{task.dueAt ? <TimelineBar pct={pct} color={barColor} /> : null}</td>
       <td style={{ ...tdStyle, fontSize: 13.5, whiteSpace: 'nowrap', color: late ? 'var(--stuck)' : undefined, fontWeight: late ? 600 : undefined }}>
         {formatDate(task.dueAt)}
       </td>
@@ -238,5 +249,5 @@ const thStyle: React.CSSProperties = {
   padding: '10px 12px', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap',
 }
 const tdStyle: React.CSSProperties = {
-  padding: '11px 12px', borderBottom: '1px solid var(--line-soft)', verticalAlign: 'middle',
+  padding: '11px 12px', borderBottom: '1px solid var(--line-soft)', verticalAlign: 'middle', minHeight: 64,
 }
