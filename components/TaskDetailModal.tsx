@@ -37,14 +37,47 @@ interface TaskDetail {
   settings: { requireReasonOnDueChange: boolean; checklistDrivesProgress: boolean }
 }
 
-export default function TaskDetailModal({ taskId, onClose, onUpdated }: {
+function buildPartialTask(d: Record<string, unknown>): TaskDetail {
+  return {
+    id: d.id as string,
+    title: d.title as string,
+    description: null,
+    status: d.status as string,
+    computedStatus: d.computedStatus as string,
+    waitingHours: (d.waitingHours as number | null) ?? null,
+    priority: (d.priority as number) ?? 2,
+    dueAt: (d.dueAt as string | null) ?? null,
+    originalDueAt: (d.originalDueAt as string | null) ?? null,
+    startedAt: null,
+    completedAt: null,
+    parentTaskId: null,
+    handoffAt: null,
+    createdAt: d.createdAt as string,
+    dueDatePushCount: 0,
+    checklistPct: (d.checklistPct as number | null) ?? null,
+    checklistTotal: (d.checklistTotal as number) ?? 0,
+    checklistDone: (d.checklistDone as number) ?? 0,
+    assignee: (d.assignee as TaskDetail['assignee']) ?? null,
+    company: (d.company as TaskDetail['company']) ?? null,
+    creator: null,
+    parentTask: null,
+    checklistItems: [],
+    images: [],
+    links: [],
+    events: [],
+    settings: { requireReasonOnDueChange: false, checklistDrivesProgress: false },
+  }
+}
+
+export default function TaskDetailModal({ taskId, initialData, onClose, onUpdated }: {
   taskId: string
+  initialData?: Record<string, unknown>
   onClose: () => void
   onUpdated: () => void
 }) {
   const { me } = useApp()
-  const [task, setTask] = useState<TaskDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [task, setTask] = useState<TaskDetail | null>(initialData ? buildPartialTask(initialData) : null)
+  const [loading, setLoading] = useState(!initialData)
   const [histOpen, setHistOpen] = useState(false)
   const [changingDue, setChangingDue] = useState(false)
   const [newDue, setNewDue] = useState('')
@@ -52,14 +85,14 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  async function load() {
-    setLoading(true)
+  async function load(showSpinner = false) {
+    if (showSpinner) setLoading(true)
     const res = await fetch(`/api/tasks/${taskId}`)
     if (res.ok) setTask(await res.json())
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [taskId])
+  useEffect(() => { load(!initialData) }, [taskId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -73,7 +106,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated }: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ checklistItemId: itemId, done }),
     })
-    load(); onUpdated()
+    load(false); onUpdated()
   }
 
   async function markDone() {
@@ -84,7 +117,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated }: {
       body: JSON.stringify({ status: 'DONE' }),
     })
     setSaving(false)
-    load(); onUpdated()
+    load(false); onUpdated()
   }
 
   async function changeDueDate(e: React.FormEvent) {
@@ -101,7 +134,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated }: {
     if (!res.ok) { setError(data.error ?? 'Failed'); setSaving(false); return }
     setChangingDue(false)
     setSaving(false)
-    load(); onUpdated()
+    load(false); onUpdated()
   }
 
   if (loading) return (

@@ -35,7 +35,7 @@ export default function BoardPage() {
   const [users, setUsers] = useState<{ id: string; displayName: string }[]>([])
   const [groupBy, setGroupBy] = useState<'company' | 'person'>('company')
   const [filter, setFilter] = useState<'all' | 'stuck' | 'week' | 'unassigned'>('all')
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchTasks = useCallback(async () => {
@@ -104,7 +104,7 @@ export default function BoardPage() {
     sections = personSections
   }
 
-  function handleRowClick(id: string) { setSelectedTaskId(id) }
+  function handleRowClick(task: Task) { setSelectedTask(task) }
 
   function handleAddTask(section: GroupedSection) {
     if (groupBy === 'company') openNewTask(section.key)
@@ -143,10 +143,11 @@ export default function BoardPage() {
         ))
       )}
 
-      {selectedTaskId && (
+      {selectedTask && (
         <TaskDetailModal
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
+          taskId={selectedTask.id}
+          initialData={selectedTask as unknown as Record<string, unknown>}
+          onClose={() => setSelectedTask(null)}
           onUpdated={() => { fetchTasks(); refreshCompanies() }}
         />
       )}
@@ -157,7 +158,7 @@ export default function BoardPage() {
 function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
   section: GroupedSection
   groupBy: 'company' | 'person'
-  onRowClick: (id: string) => void
+  onRowClick: (task: Task) => void
   onAddTask?: () => void
 }) {
   const stuckLabel = section.stuckCount > 0 ? ` · ${section.stuckCount} stuck` : ''
@@ -186,7 +187,7 @@ function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
           </thead>
           <tbody>
             {section.tasks.map(task => (
-              <TaskRow key={task.id} task={task} groupBy={groupBy} companyColor={section.color} onClick={() => onRowClick(task.id)} />
+              <TaskRow key={task.id} task={task} groupBy={groupBy} companyColor={section.color} onClick={() => onRowClick(task)} />
             ))}
             {onAddTask && (
               <tr onClick={onAddTask} style={{ cursor: 'pointer' }}>
