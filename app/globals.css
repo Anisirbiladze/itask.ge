@@ -48,14 +48,18 @@ body {
 
 button, select, input, textarea { font-family: inherit; }
 
-/* ── Uppercase UI chrome ─────────────────────────────────────────── */
-h1, h2, h3 { text-transform: uppercase; letter-spacing: .02em; }
-nav button, .sidebar button { text-transform: uppercase; letter-spacing: .04em; }
-th { text-transform: uppercase; letter-spacing: .05em; }
-.pbtn .lead { text-transform: uppercase; letter-spacing: .06em; }
-.sbtn { text-transform: uppercase; letter-spacing: .05em; }
-.st { text-transform: uppercase; letter-spacing: .06em; }
-label { text-transform: uppercase; letter-spacing: .04em; }
+/* ── Uppercase UI chrome — Noto Sans Georgian has Mtavruli glyphs ── */
+h1, h2, h3,
+nav button, .sidebar button,
+th,
+.pbtn .lead,
+.sbtn,
+.st,
+label {
+  font-family: 'Noto Sans Georgian', 'Mersad', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 
