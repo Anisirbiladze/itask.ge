@@ -8,7 +8,7 @@ export default async function SettingsPage() {
 
   const [settings, recurring, handoffs, checklists, users] = await Promise.all([
     prisma.setting.upsert({ where: { id: 'singleton' }, update: {}, create: { id: 'singleton' } }),
-    prisma.recurringTemplate.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.recurringTemplate.findMany({ orderBy: { id: 'asc' } }),
     prisma.handoffRule.findMany({ where: { active: true } }),
     prisma.checklistTemplate.findMany({ orderBy: { name: 'asc' } }),
     prisma.user.findMany({ where: { archived: false }, orderBy: { name: 'asc' }, select: { id: true, displayName: true } }),
