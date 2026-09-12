@@ -22,9 +22,21 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/users?filter=active').then(r => r.json()).then(setUsers).catch(() => {})
     fetch('/api/checklist-templates').then(r => r.json()).then(setChecklistTemplates).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const url = companyId
+      ? `/api/users?filter=active&companyId=${encodeURIComponent(companyId)}`
+      : '/api/users?filter=active'
+    fetch(url)
+      .then(r => r.json())
+      .then((data: { id: string; displayName: string }[]) => {
+        setUsers(data)
+        setAssigneeId(prev => data.find(u => u.id === prev) ? prev : '')
+      })
+      .catch(() => {})
+  }, [companyId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

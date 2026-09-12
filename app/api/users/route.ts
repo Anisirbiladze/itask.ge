@@ -9,10 +9,16 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const filter = searchParams.get('filter') ?? 'active' // active | archived | all
+  const companyId = searchParams.get('companyId')
 
   let where: Record<string, unknown> = {}
   if (filter === 'active') where.archived = false
   else if (filter === 'archived') where.archived = true
+
+  if (companyId) {
+    const memberships = await prisma.userCompany.findMany({ where: { companyId }, select: { userId: true } })
+    where.id = { in: memberships.map((m: { userId: string }) => m.userId) }
+  }
 
   const users = await prisma.user.findMany({
     where,
