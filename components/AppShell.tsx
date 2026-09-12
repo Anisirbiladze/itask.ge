@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState, createContext, useContext } from 'react'
+import { useEffect, useState, createContext, useContext, useCallback } from 'react'
+import { DEFAULT_TRANSLATIONS } from '@/lib/translations'
 import { usePathname, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { avatarColor, initials } from '@/lib/utils'
@@ -26,31 +27,35 @@ interface AppCtx {
   me: Me | null
   companies: Company[]
   users: AppUser[]
-  activeCompany: string | null   // null = All
+  activeCompany: string | null
   setActiveCompany: (id: string | null) => void
   refreshCompanies: () => void
   openNewTask: (companyId?: string) => void
+  t: (key: string) => string
 }
 export const AppContext = createContext<AppCtx>({
   me: null, companies: [], users: [], activeCompany: null,
   setActiveCompany: () => {}, refreshCompanies: () => {}, openNewTask: () => {},
+  t: (key: string) => DEFAULT_TRANSLATIONS[key]?.default ?? key,
 })
 export function useApp() { return useContext(AppContext) }
 
 /* ── nav items ────────────────────────────────────────────────────── */
-const NAV = [
-  { href: '/board',    label: 'Board',    icon: BoardIcon },
-  { href: '/team',     label: 'Team',     icon: TeamIcon },
-  { href: '/reports',  label: 'Reports',  icon: ReportsIcon,  ceoOnly: true },
-  { href: '/people',   label: 'People',   icon: PeopleIcon,   ceoOnly: true },
-  { href: '/settings', label: 'Settings', icon: SettingsIcon, ceoOnly: true },
+const NAV_KEYS = [
+  { href: '/board',        tKey: 'nav.board',        icon: BoardIcon },
+  { href: '/team',         tKey: 'nav.team',         icon: TeamIcon },
+  { href: '/reports',      tKey: 'nav.reports',      icon: ReportsIcon,      ceoOnly: true },
+  { href: '/people',       tKey: 'nav.people',       icon: PeopleIcon,       ceoOnly: true },
+  { href: '/settings',     tKey: 'nav.settings',     icon: SettingsIcon,     ceoOnly: true },
+  { href: '/translations', tKey: 'nav.translations', icon: TranslateIcon,    ceoOnly: true },
 ]
 
-export default function AppShell({ children, initialMe, initialCompanies, initialUsers }: {
+export default function AppShell({ children, initialMe, initialCompanies, initialUsers, initialTranslations }: {
   children: React.ReactNode
   initialMe: Me
   initialCompanies: Company[]
   initialUsers: AppUser[]
+  initialTranslations: Record<string, string>
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -60,6 +65,11 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   const [activeCompany, setActiveCompany] = useState<string | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
+  const [translations] = useState<Record<string, string>>(initialTranslations)
+
+  const t = useCallback((key: string): string => {
+    return translations[key] ?? DEFAULT_TRANSLATIONS[key]?.default ?? key
+  }, [translations])
 
   useEffect(() => {
     const co = activeCompany ? companies.find(c => c.id === activeCompany) : null
@@ -100,11 +110,12 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
     setNewTaskOpen(true)
   }
 
+  const NAV = NAV_KEYS.map(n => ({ ...n, label: t(n.tKey) }))
   const visibleNav = NAV.filter(n => !n.ceoOnly || me?.role === 'CEO')
   const dateStr = format(new Date(), 'EEEE, d MMMM')
 
   return (
-    <AppContext.Provider value={{ me, companies, users, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask }}>
+    <AppContext.Provider value={{ me, companies, users, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask, t }}>
       {/* Sidebar */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
@@ -331,4 +342,7 @@ function SettingsIcon({ size }: { size: number }) {
 }
 function PlusIcon() {
   return <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+}
+function TranslateIcon({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
 }

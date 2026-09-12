@@ -166,6 +166,12 @@ model ChecklistTemplate {
   items     String[]
 }
 
+model Translation {
+  key   String @id
+  page  String
+  value String
+}
+
 model Setting {
   id                       String  @id @default("singleton")
   handoffFlagHours         Int     @default(48)

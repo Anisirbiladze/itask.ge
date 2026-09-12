@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const [user, memberships, companies, counts, allUsers, allMemberships] = await Promise.all([
+  const [user, memberships, companies, counts, allUsers, allMemberships, translationRows] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { id: true, name: true, displayName: true, role: true, jobTitle: true, functionGroup: true, mustChangePw: true, archived: true },
@@ -21,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }),
     prisma.user.findMany({ where: { archived: false }, orderBy: { name: 'asc' }, select: { id: true, displayName: true } }),
     prisma.userCompany.findMany(),
+    prisma.translation.findMany(),
   ])
 
   if (!user || user.archived) redirect('/login')
@@ -46,8 +47,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     companies: userCompanies,
   }
 
+  const initialTranslations = Object.fromEntries(
+    (translationRows as { key: string; value: string }[]).map(r => [r.key, r.value])
+  )
+
   return (
-    <AppShell initialMe={initialMe} initialCompanies={allCompanies} initialUsers={enrichedUsers}>
+    <AppShell initialMe={initialMe} initialCompanies={allCompanies} initialUsers={enrichedUsers} initialTranslations={initialTranslations}>
       {children}
     </AppShell>
   )
