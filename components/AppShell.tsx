@@ -39,30 +39,18 @@ const NAV = [
   { href: '/settings', label: 'Settings', icon: SettingsIcon, ceoOnly: true },
 ]
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, initialMe, initialCompanies }: {
+  children: React.ReactNode
+  initialMe: Me
+  initialCompanies: Company[]
+}) {
   const router = useRouter()
   const pathname = usePathname()
-  const [me, setMe] = useState<Me | null>(null)
-  const [companies, setCompanies] = useState<Company[]>([])
+  const [me] = useState<Me>(initialMe)
+  const [companies, setCompanies] = useState<Company[]>(initialCompanies)
   const [activeCompany, setActiveCompany] = useState<string | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => { console.log('[auth/me] status:', r.status); return r.ok ? r.json() : null })
-      .then(data => {
-        console.log('[auth/me] data:', data)
-        if (!data) { router.push('/login'); return }
-        if (data.mustChangePw) { router.push('/change-password'); return }
-        setMe(data)
-        setLoading(false)
-      })
-      .catch(err => { console.error('[auth/me] error:', err); router.push('/login') })
-
-    fetchCompanies()
-  }, [])
 
   function fetchCompanies() {
     fetch('/api/companies')
@@ -80,8 +68,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setNewTaskCompany(companyId)
     setNewTaskOpen(true)
   }
-
-  if (loading) return <div style={{ minHeight: '100vh', background: 'var(--paper)' }} />
 
   const visibleNav = NAV.filter(n => !n.ceoOnly || me?.role === 'CEO')
   const dateStr = format(new Date(), 'EEEE, d MMMM')
