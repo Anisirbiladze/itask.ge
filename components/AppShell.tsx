@@ -140,7 +140,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
               }}
             >
               <n.icon size={17} />
-              {n.label}
+              {n.label.toUpperCase()}
             </button>
           )
         })}
@@ -171,8 +171,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         {/* Top bar */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              {NAV.find(n => pathname.startsWith(n.href))?.label ?? 'Board'}
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '0.01em', textTransform: 'uppercase' }}>
+              {(NAV.find(n => pathname.startsWith(n.href))?.label ?? t('nav.board')).toUpperCase()}
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: 13.5 }}>{dateStr}</p>
           </div>
@@ -203,7 +203,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
           return (
             <button key={n.href} onClick={() => router.push(n.href)} style={{ flex: 1, background: 'none', border: 0, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer', minHeight: 44 }}>
               <n.icon size={19} />
-              {n.label}
+              {n.label.toUpperCase()}
             </button>
           )
         })}
