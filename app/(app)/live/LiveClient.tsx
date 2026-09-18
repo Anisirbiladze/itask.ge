@@ -13,10 +13,12 @@ function fmt(n: number) {
 }
 function groupByPhone(sales: LiveSale[]): CustGroup[] {
   const map: Record<string, CustGroup> = {}
-  for (const s of sales) {
-    if (!map[s.phone]) map[s.phone] = { phone: s.phone, username: s.username, items: [] }
-    map[s.phone].username = s.username || map[s.phone].username
-    map[s.phone].items.push(s)
+  const sorted = sales.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  for (const s of sorted) {
+    const key = normalizePhone(s.phone)
+    if (!map[key]) map[key] = { phone: key, username: '', items: [] }
+    if (s.username) map[key].username = s.username  // latest non-empty username wins
+    map[key].items.push(s)
   }
   return Object.values(map)
 }
@@ -116,12 +118,13 @@ export default function LiveClient() {
   }
 
   async function settlePhone(phone: string) {
+    const canonical = normalizePhone(phone)
     await fetch('/api/live/sessions/settle', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: currentId, phone }),
+      body: JSON.stringify({ sessionId: currentId, phone: canonical }),
     })
-    setSales(prev => prev.map(s => s.phone === phone ? { ...s, paid: true } : s))
-    setAllSales(prev => prev.map(s => s.phone === phone ? { ...s, paid: true } : s))
+    setSales(prev => prev.map(s => normalizePhone(s.phone) === canonical ? { ...s, paid: true } : s))
+    setAllSales(prev => prev.map(s => normalizePhone(s.phone) === canonical ? { ...s, paid: true } : s))
   }
 
   /* phone hint */
