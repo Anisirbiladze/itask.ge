@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { normalizePhone } from '@/lib/normalizePhone'
 
 /* ── types ── */
 interface LiveSession { id: string; label: string; dateKey: string; createdAt: string }
@@ -82,7 +83,7 @@ export default function LiveClient() {
   }
 
   async function addSale() {
-    const phone = fPhone.replace(/\D/g, '')
+    const phone = normalizePhone(fPhone)
     if (!phone || fPrice === '') { setHint({ text: 'შეავსე ნომერი და ფასი.', good: false }); return }
     if (!currentId) return
     setAdding(true)
@@ -125,9 +126,9 @@ export default function LiveClient() {
 
   /* phone hint */
   useEffect(() => {
-    const phone = fPhone.replace(/\D/g, '')
+    const phone = normalizePhone(fPhone)
     if (!phone) { setHint(null); return }
-    const matches = allSales.filter(s => s.phone === phone).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const matches = allSales.filter(s => normalizePhone(s.phone) === phone).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     if (matches.length > 0) {
       const un = matches[0].username
       if (!fUser && un) setFUser(un)

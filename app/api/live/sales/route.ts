@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { normalizePhone } from '@/lib/normalizePhone'
 
 export async function GET(req: Request) {
   const session = await getSession()
@@ -29,13 +30,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'sessionId, phone, price required' }, { status: 400 })
   }
 
+  const canonicalPhone = normalizePhone(phone)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const existingInSession = await (prisma as any).liveSale.findFirst({ where: { sessionId, phone } })
+  const existingInSession = await (prisma as any).liveSale.findFirst({ where: { sessionId, phone: canonicalPhone } })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sale = await (prisma as any).liveSale.create({
     data: {
       sessionId,
-      phone: String(phone).replace(/\D/g, ''),
+      phone: normalizePhone(phone),
       username: username || '',
       price: Number(price),
       paid: false,
