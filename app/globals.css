@@ -133,6 +133,18 @@ label {
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 
+/* ── Sidebar nav links ───────────────────────────────────────────── */
+.nav-link {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; color: var(--ink-3);
+  font-size: 13.5px; font-weight: 500;
+  padding: 8px 10px; border-radius: 9px; text-decoration: none;
+  transition: background-color .16s, color .16s;
+}
+.nav-link:hover { background: var(--tint); color: var(--ink-2); }
+.nav-link.nav-active { background: var(--tint); color: var(--ink); font-weight: 600; }
+.nav-link.nav-active svg { color: var(--accent-text); }
+
 /* ── Primary pill button ─────────────────────────────────────────── */
 .pbtn {
   position: relative; display: inline-flex; align-items: center;

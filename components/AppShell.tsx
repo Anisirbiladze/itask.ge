@@ -130,14 +130,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         {visibleNav.map(n => {
           const active = pathname.startsWith(n.href)
           return (
-            <Link key={n.href} href={n.href} style={{
-              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-              background: active ? 'var(--tint)' : 'none',
-              color: active ? 'var(--ink)' : 'var(--ink-3)',
-              fontSize: 13.5, fontWeight: active ? 600 : 500,
-              padding: '8px 10px', borderRadius: 9, textDecoration: 'none',
-              transition: 'background-color .16s, color .16s',
-            }}>
+            <Link key={n.href} href={n.href} className={`nav-link${active ? ' nav-active' : ''}`}>
               <n.icon size={17} />
               {n.label.toUpperCase()}
             </Link>
