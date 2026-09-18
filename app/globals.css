@@ -113,10 +113,10 @@ label {
 .pr-pill-mid  { background: #FEF9C3; color: #854D0E; }
 .pr-pill-low  { background: #F1F5F9; color: #64748B; }
 /* segmented control */
-.seg { display: inline-flex; padding: 3px; background: var(--tint); border-radius: 10px; gap: 2px; border: 1px solid var(--line); }
-.seg-btn { padding: 6px 13px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); font-family: var(--font-noto-geo),'Noto Sans Georgian',sans-serif; border: 0; background: none; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; }
-.seg-btn.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(8,9,11,.1); }
-.seg-btn:not(.on):hover { color: var(--ink-2); }
+.seg { display: inline-flex; padding: 4px; background: var(--surface); border-radius: 11px; gap: 3px; border: 1.5px solid #C8CDD6; box-shadow: 0 1px 3px rgba(8,9,11,.06); }
+.seg-btn { padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); font-family: var(--font-noto-geo),'Noto Sans Georgian',sans-serif; border: 0; background: none; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; }
+.seg-btn.on { background: var(--ink); color: #fff; box-shadow: 0 1px 3px rgba(8,9,11,.18); }
+.seg-btn:not(.on):hover { background: var(--tint); color: var(--ink-2); }
 /* stat */
 .stat-row { display: flex; gap: 28px; padding: 18px 0 14px; }
 .stat-item b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -.035em; line-height: 1; }
