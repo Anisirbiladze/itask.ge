@@ -64,7 +64,9 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   const [me] = useState<Me>(initialMe)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
   const [users] = useState<AppUser[]>(initialUsers)
-  const [activeCompany, setActiveCompany] = useState<string | null>(null)
+  const [activeCompany, setActiveCompany] = useState<string | null>(
+    initialCompanies.find(c => c.name.toLowerCase() === 'joy')?.id ?? null
+  )
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
   const [translations] = useState<Record<string, string>>(initialTranslations)
