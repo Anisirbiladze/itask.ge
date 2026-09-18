@@ -1,8 +1,8 @@
 'use client'
 import { useState, useCallback, useMemo } from 'react'
-import { useApp, Avatar, StatusPill, PriorityBars, TimelineBar } from '@/components/AppShell'
+import { useApp, Avatar } from '@/components/AppShell'
 import TaskDetailModal from '@/components/TaskDetailModal'
-import { formatDate, isLate } from '@/lib/utils'
+import { isLate } from '@/lib/utils'
 
 export interface Task {
   id: string
@@ -118,21 +118,34 @@ export default function BoardClient({
     else openNewTask()
   }
 
+  /* ── Stats ── */
+  const allOpen = augmented.filter(t => t.status !== 'DONE')
+  const stuckTotal = allOpen.filter(t => t.computedStatus === 'WAITING' || (t.status === 'WORKING' && t.dueAt && new Date(t.dueAt) < new Date())).length
+  const withDue = augmented.filter(t => t.dueAt && t.status !== 'DONE')
+  const onTimePct = withDue.length ? Math.round(withDue.filter(t => !isLate(t.dueAt!)).length / withDue.length * 100) : 100
+  const doneCount = augmented.filter(t => t.status === 'DONE').length
+
   return (
     <div>
-      <div style={{ display: 'flex', gap: 9, marginBottom: 20, flexWrap: 'wrap' }}>
-        <select value={groupBy} onChange={e => setGroupBy(e.target.value as 'company' | 'person')}
-          style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 30px 9px 12px', appearance: 'none', cursor: 'pointer', backgroundImage: "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B7480' stroke-width='1.7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 11px center', minHeight: 44 }}>
-          <option value="company">Group by company</option>
-          <option value="person">Group by person</option>
-        </select>
-        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | 'stuck' | 'week' | 'unassigned')}
-          style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 30px 9px 12px', appearance: 'none', cursor: 'pointer', backgroundImage: "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2020/svg' width='12' height='8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B7480' stroke-width='1.7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 11px center', minHeight: 44 }}>
-          <option value="all">All tasks</option>
-          <option value="stuck">Stuck only</option>
-          <option value="week">Due this week</option>
-          <option value="unassigned">Unassigned</option>
-        </select>
+      {/* Stats */}
+      <div className="stat-row">
+        <div className="stat-item"><b>{allOpen.length}</b><span>მიმდინარე</span></div>
+        <div className={`stat-item${stuckTotal > 0 ? ' hot' : ''}`}><b>{stuckTotal}</b><span>გაჭედილი</span></div>
+        <div className="stat-item"><b>{onTimePct}%</b><span>ვადაში</span></div>
+        <div className="stat-item"><b>{doneCount}</b><span>დასრულებული</span></div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap' }}>
+        <div className="seg">
+          <button className={`seg-btn${groupBy === 'company' ? ' on' : ''}`} onClick={() => setGroupBy('company')}>კომპანია</button>
+          <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
+        </div>
+        <div className="seg">
+          <button className={`seg-btn${filter === 'all' ? ' on' : ''}`} onClick={() => setFilter('all')}>ყველა</button>
+          <button className={`seg-btn${filter === 'stuck' ? ' on' : ''}`} onClick={() => setFilter('stuck')}>გაჭედილი</button>
+          <button className={`seg-btn${filter === 'week' ? ' on' : ''}`} onClick={() => setFilter('week')}>ამ კვირის</button>
+        </div>
       </div>
 
       {sections.map(section => (
@@ -157,97 +170,135 @@ export default function BoardClient({
   )
 }
 
+/* ── Board section ────────────────────────────────────────────────── */
 function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
   section: GroupedSection
   groupBy: 'company' | 'person'
   onRowClick: (task: Task) => void
   onAddTask?: () => void
 }) {
-  const stuckLabel = section.stuckCount > 0 ? ` · ${section.stuckCount} stuck` : ''
   return (
-    <section style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 9, paddingLeft: 2 }}>
-        <span style={{ color: section.accentText }}>{section.label}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>
-          {section.openCount} open{stuckLabel}
+    <section style={{ marginBottom: 34, ['--gc' as string]: section.color }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 11, paddingLeft: 2 }}>
+        <h2 className="ka" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.03em', color: section.color }}>{section.label}</h2>
+        <span style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 500 }}>
+          {section.openCount} მიმდინარე{section.stuckCount > 0 && <span style={{ color: 'var(--stuck-2)', fontWeight: 600 }}> · {section.stuckCount} გაჭედილი</span>}
         </span>
       </div>
+
       {section.tasks.length === 0 ? (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '28px 24px', color: 'var(--muted)', fontSize: 13.5, textAlign: 'center' }}>
-          No tasks yet.
-          {onAddTask && <button onClick={onAddTask} style={{ marginLeft: 8, background: 'none', border: 0, color: 'var(--accent-text)', fontWeight: 600, cursor: 'pointer', fontSize: 13.5 }}>+ Add one</button>}
+        <div style={{ color: 'var(--ink-3)', fontSize: 13.5, padding: '18px 4px' }}>
+          დავალება არ არის.
+          {onAddTask && <button onClick={onAddTask} style={{ marginLeft: 8, background: 'none', border: 0, color: 'var(--accent-text)', fontWeight: 600, cursor: 'pointer', fontSize: 13.5 }}>+ დამატება</button>}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 700 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Task</th>
-                {groupBy === 'company' ? <th style={thStyle}>Owner</th> : <th style={thStyle}>Company</th>}
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Timeline</th>
-                <th style={thStyle}>Due</th>
-                <th style={thStyle}>Priority</th>
-              </tr>
-            </thead>
-            <tbody>
-              {section.tasks.map(task => (
-                <TaskRow key={task.id} task={task} groupBy={groupBy} companyColor={section.color} onClick={() => onRowClick(task)} />
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: 720 }}>
+            <div className="board-cols">
+              <span>დავალება</span>
+              <span />
+              <span>{groupBy === 'company' ? 'შემსრულებელი' : 'კომპანია'}</span>
+              <span>მიმდინარეობა</span>
+              <span>დარჩა</span>
+              <span>სტატუსი</span>
+              <span>პრ.</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {section.tasks.map((task, i) => (
+                <TaskRow key={task.id} task={task} groupBy={groupBy} groupColor={section.color} onClick={() => onRowClick(task)} delay={i * 0.03} />
               ))}
-              {onAddTask && (
-                <tr onClick={onAddTask} style={{ cursor: 'pointer' }}>
-                  <td colSpan={6} style={{ padding: '9px 16px', color: 'var(--muted)', fontSize: 13.5 }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>                    + Add task{groupBy === 'company' ? ` to ${section.label}` : ''}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+            {onAddTask && (
+              <button className="add-task-row" onClick={onAddTask}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                დავალების დამატება
+              </button>
+            )}
+          </div>
         </div>
       )}
     </section>
   )
 }
 
-function TaskRow({ task, groupBy, companyColor, onClick }: { task: Task; groupBy: 'company' | 'person'; companyColor: string; onClick: () => void }) {
-  const late = task.dueAt && isLate(task.dueAt) && task.status !== 'DONE'
-  const pct = task.checklistPct ?? (task.status === 'DONE' ? 100 : task.status === 'WORKING' ? 50 : 0)
-  const barColor = task.status === 'DONE' ? '#2E9E63' : companyColor
+/* ── Time-left helper ─────────────────────────────────────────────── */
+function TimeLeft({ dueAt, status }: { dueAt: string | null; status: string }) {
+  if (!dueAt) return <span style={{ color: 'var(--ink-3)' }}>—</span>
+  if (status === 'DONE') {
+    return <div className="tleft done"><b>✓</b><span>ვადაში</span></div>
+  }
+  const diffMs = new Date(dueAt).getTime() - Date.now()
+  const hours = Math.round(diffMs / 36e5)
+  const days = Math.round(diffMs / 864e5)
+  if (diffMs < 0) {
+    return <div className="tleft over"><b>−{Math.abs(days) || 1}დ</b><span>ვადაგადაცილ.</span></div>
+  }
+  if (hours < 24) {
+    return <div className={`tleft${hours < 6 ? ' warn' : ''}`}><b>{hours}სთ</b><span>დარჩა</span></div>
+  }
+  return <div className={`tleft${days <= 2 ? ' warn' : ''}`}><b>{days}დ</b><span>დარჩა</span></div>
+}
+
+/* ── Status button v4 ─────────────────────────────────────────────── */
+const ST_MAP: Record<string, { cls: string; label: string }> = {
+  NOT_STARTED: { cls: 'st-idle',  label: 'დაუწყებელი' },
+  WORKING:     { cls: 'st-work',  label: 'მიმდინარე'  },
+  DONE:        { cls: 'st-done',  label: 'დასრულდა'   },
+  WAITING:     { cls: 'st-stuck', label: 'გაჭედილი'   },
+}
+
+function StatusBtn({ status }: { status: string }) {
+  const { cls, label } = ST_MAP[status] ?? ST_MAP.NOT_STARTED
   return (
-    <tr onClick={onClick} className="task-row">
-      <td style={{ ...tdStyle, paddingLeft: 0, position: 'relative', fontWeight: 500, minWidth: 230 }}>
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--accent)', borderRadius: '0 2px 2px 0' }} />
-        <span style={{ paddingLeft: 16 }}>{task.title}</span>
-      </td>
-      <td style={tdStyle}>
-        {groupBy === 'company' ? (
-          task.assignee ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
-              <Avatar name={task.assignee.displayName} size={27} />
-              <span style={{ fontSize: 13.5 }}>{task.assignee.displayName}</span>
-            </span>
-          ) : <span style={{ color: 'var(--muted)', fontSize: 13 }}>—</span>
-        ) : (
-          task.company ? (
-            <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, color: task.company.accentInk, background: task.company.color }}>{task.company.name}</span>
-          ) : <span style={{ color: 'var(--muted)' }}>—</span>
-        )}
-      </td>
-      <td style={tdStyle}><StatusPill status={task.computedStatus} waitingHours={task.waitingHours} /></td>
-      <td style={tdStyle}>{task.dueAt ? <TimelineBar pct={pct} color={barColor} /> : null}</td>
-      <td style={{ ...tdStyle, fontSize: 13.5, whiteSpace: 'nowrap', color: late ? 'var(--stuck)' : undefined, fontWeight: late ? 600 : undefined }}>
-        {formatDate(task.dueAt)}
-      </td>
-      <td style={tdStyle}><PriorityBars priority={task.priority} /></td>
-    </tr>
+    <button className={`st-btn ${cls}`} type="button" style={{ pointerEvents: 'none' }}>
+      <span className="st-puls" />
+      {label}
+    </button>
   )
 }
 
-const thStyle: React.CSSProperties = {
-  fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', textAlign: 'left',
-  padding: '10px 12px', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap',
+/* ── Priority circle v4 ───────────────────────────────────────────── */
+const PR_CLS = ['pr-low', 'pr-low', 'pr-mid', 'pr-high']
+function PriorityCircle({ priority }: { priority: number }) {
+  const cls = PR_CLS[Math.min(priority, 3)] ?? 'pr-low'
+  return <button className={`pr-dot ${cls}`} type="button" style={{ pointerEvents: 'none' }} />
 }
-const tdStyle: React.CSSProperties = {
-  padding: '11px 12px', borderBottom: '1px solid var(--line-soft)', verticalAlign: 'middle', minHeight: 64,
+
+/* ── Task row v4 ──────────────────────────────────────────────────── */
+function TaskRow({ task, groupBy, groupColor, onClick, delay }: {
+  task: Task; groupBy: 'company' | 'person'; groupColor: string; onClick: () => void; delay: number
+}) {
+  const pct = task.checklistPct ?? (task.status === 'DONE' ? 100 : task.status === 'WORKING' ? 50 : 0)
+  const isDone = task.status === 'DONE'
+  return (
+    <div className="board-row" style={{ animationDelay: `${delay}s`, ['--gc' as string]: groupColor }} onClick={onClick}>
+      <div className="cel cel-task">
+        <span>{task.title}</span>
+      </div>
+      <div className="cel cel-ow" style={{ justifyContent: 'center' }}>
+        {task.assignee
+          ? <Avatar name={task.assignee.displayName} size={34} />
+          : <span style={{ color: 'var(--ink-3)', fontSize: 13 }}>—</span>}
+      </div>
+      <div className="cel cel-nm" style={{ justifyContent: 'center', textAlign: 'center' }}>
+        {groupBy === 'company'
+          ? (task.assignee?.displayName ?? '—')
+          : (task.company ? <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: task.company.accentInk, background: task.company.color }}>{task.company.name}</span> : '—')}
+      </div>
+      <div className="cel" style={{ padding: '0 14px' }}>
+        {task.dueAt
+          ? <div className="tl-bar"><i className={`tl-fill${isDone ? ' tl-ok' : ''}`} style={{ ['--w' as string]: `${pct}%` }} /></div>
+          : <span style={{ color: 'var(--ink-3)', fontSize: 12 }}>—</span>}
+      </div>
+      <div className="cel">
+        <TimeLeft dueAt={task.dueAt} status={task.status} />
+      </div>
+      <div className="cel cel-st">
+        <StatusBtn status={task.computedStatus} />
+      </div>
+      <div className="cel cel-pr">
+        <PriorityCircle priority={task.priority} />
+      </div>
+    </div>
+  )
 }

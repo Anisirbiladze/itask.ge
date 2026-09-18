@@ -117,11 +117,11 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
 
   return (
     <AppContext.Provider value={{ me, companies, users, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask, t }}>
-      {/* Sidebar */}
+      {/* Sidebar / Rail */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
-        background: 'var(--nav)', padding: '18px 12px',
-        display: 'flex', flexDirection: 'column', gap: 4, zIndex: 40,
+        background: 'var(--surface)', borderRight: '1px solid var(--line)',
+        padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 1, zIndex: 40,
       }} className="sidebar">
         {/* Brand / Logo slot */}
         <SidebarBrand activeCompany={activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null} />
@@ -132,10 +132,11 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
           return (
             <Link key={n.href} href={n.href} style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-              background: active ? 'rgba(255,255,255,.11)' : 'none',
-              color: active ? '#fff' : '#98A3B0',
-              fontSize: 14, fontWeight: active ? 600 : 500,
-              padding: '9px 10px', borderRadius: 8, textDecoration: 'none',
+              background: active ? 'var(--tint)' : 'none',
+              color: active ? 'var(--ink)' : 'var(--ink-3)',
+              fontSize: 13.5, fontWeight: active ? 600 : 500,
+              padding: '8px 10px', borderRadius: 9, textDecoration: 'none',
+              transition: 'background-color .16s, color .16s',
             }}>
               <n.icon size={17} />
               {n.label.toUpperCase()}
@@ -144,28 +145,30 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         })}
 
         {/* Companies filter */}
-        <div style={{ fontSize: 10.5, fontWeight: 600, color: '#66707C', padding: '18px 10px 7px', letterSpacing: '.03em' }}>
-          COMPANIES
+        <div style={{ height: 1, background: 'var(--line)', margin: '16px 10px 12px' }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', padding: '0 10px 8px', letterSpacing: '.1em', fontFamily: 'var(--font-noto-geo)', textTransform: 'uppercase' }}>
+          {t('nav.companies')}
         </div>
         <CompanyFilter companies={companies} active={activeCompany} onChange={setActiveCompany} />
 
-        {/* Me */}
         {me && (
-          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 9, padding: 10, borderTop: '1px solid rgba(255,255,255,.09)', color: '#98A3B0', fontSize: 13 }}>
-            <Avatar name={me.displayName} size={27} />
+          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', borderRadius: 10, cursor: 'pointer', transition: 'background-color .16s' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--line-soft)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+            <div style={{ width: 28, height: 28, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
+              <Avatar name={me.displayName} size={28} />
+            </div>
             <span style={{ flex: 1, overflow: 'hidden' }}>
-              <b style={{ color: '#fff', fontWeight: 600, display: 'block', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.displayName}</b>
-              <span style={{ fontSize: 11.5 }}>{me.role}</span>
+              <b style={{ color: 'var(--ink)', fontWeight: 600, display: 'block', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.displayName}</b>
+              <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{me.role}</span>
             </span>
-            <button onClick={handleLogout} title="Sign out" style={{ background: 'none', border: 0, color: '#66707C', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px' }}>
-              ↪
-            </button>
+            <button onClick={handleLogout} title="Sign out" style={{ background: 'none', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px' }}>↪</button>
           </div>
         )}
       </aside>
 
       {/* Main content */}
-      <main style={{ marginLeft: 'var(--sb)', padding: '20px 24px 70px', maxWidth: 1180 }} className="main-content">
+      <main style={{ marginLeft: 'var(--sb)', padding: '20px 30px 80px', maxWidth: 1200 }} className="main-content">
         {/* Top bar */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
           <div>
@@ -255,18 +258,26 @@ function SidebarBrand({ activeCompany }: { activeCompany: Company | null }) {
 /* ── Company filter ───────────────────────────────────────────────── */
 function CompanyFilter({ companies, active, onChange }: { companies: Company[], active: string | null, onChange: (id: string | null) => void }) {
   const totalOpen = companies.reduce((s, c) => s + c.openCount, 0)
+  const coStyle = (isActive: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+    background: isActive ? 'var(--tint)' : 'none', border: 0,
+    color: isActive ? 'var(--ink)' : 'var(--ink-3)',
+    fontSize: 13, fontWeight: isActive ? 600 : 500,
+    padding: '7px 10px', borderRadius: 9, cursor: 'pointer', textAlign: 'left',
+    transition: 'background-color .16s, color .16s',
+  })
   return (
     <>
-      <button onClick={() => onChange(null)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', background: active === null ? 'rgba(255,255,255,.11)' : 'none', border: 0, color: active === null ? '#fff' : '#98A3B0', fontSize: 13.5, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#66707C', flexShrink: 0 }} />
+      <button onClick={() => onChange(null)} style={coStyle(active === null)}>
+        <span style={{ width: 7, height: 7, borderRadius: '2.5px', background: 'var(--ink-3)', flexShrink: 0 }} />
         All
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#66707C' }}>{totalOpen}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--ink-3)' }}>{totalOpen}</span>
       </button>
       {companies.map(c => (
-        <button key={c.id} onClick={() => onChange(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', background: active === c.id ? 'rgba(255,255,255,.11)' : 'none', border: 0, color: active === c.id ? '#fff' : '#98A3B0', fontSize: 13.5, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0, opacity: 0.9 }} />
+        <button key={c.id} onClick={() => onChange(c.id)} style={coStyle(active === c.id)}>
+          <span style={{ width: 7, height: 7, borderRadius: '2.5px', background: c.color, flexShrink: 0 }} />
           {c.name}
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#66707C' }}>{c.openCount}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--ink-3)' }}>{c.openCount}</span>
         </button>
       ))}
     </>
