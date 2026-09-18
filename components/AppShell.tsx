@@ -230,7 +230,7 @@ function SidebarBrand({ activeCompany }: { activeCompany: Company | null }) {
   return (
     <div style={{ padding: '4px 10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {activeCompany.logoUrl ? (
-        <img src={activeCompany.logoUrl} alt={activeCompany.name} style={{ maxHeight: 26, maxWidth: 160, objectFit: 'contain', objectPosition: 'left' }} />
+        <img src={activeCompany.logoUrl} alt={activeCompany.name} style={{ maxHeight: 56, maxWidth: 170, objectFit: 'contain', objectPosition: 'left' }} />
       ) : (
         <span style={{ fontSize: 16, fontWeight: 700, color: activeCompany.accentText }}>{activeCompany.name}</span>
       )}
