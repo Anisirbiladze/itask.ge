@@ -8,16 +8,14 @@ interface LiveSale { id: string; sessionId: string; phone: string; username: str
 interface CustGroup { phone: string; username: string; items: LiveSale[] }
 
 /* ── helpers ── */
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('ka-GE') + ' ₾'
-}
+function fmt(n: number) { return Math.round(n).toLocaleString('ka-GE') + ' ₾' }
 function groupByPhone(sales: LiveSale[]): CustGroup[] {
   const map: Record<string, CustGroup> = {}
   const sorted = sales.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   for (const s of sorted) {
     const key = normalizePhone(s.phone)
     if (!map[key]) map[key] = { phone: key, username: '', items: [] }
-    if (s.username) map[key].username = s.username  // latest non-empty username wins
+    if (s.username) map[key].username = s.username
     map[key].items.push(s)
   }
   return Object.values(map)
@@ -27,9 +25,23 @@ function custTotals(items: LiveSale[]) {
   for (const i of items) { total += Number(i.price); if (i.paid) paid += Number(i.price) }
   return { total, paid, due: total - paid }
 }
+function waHref(phone: string) {
+  const n = normalizePhone(phone)
+  return `https://wa.me/995${n}`
+}
 
 /* ── tokens ── */
 const S: React.CSSProperties = { fontFamily: "'IBM Plex Mono', 'SF Mono', monospace" }
+
+function WaBtn({ phone }: { phone: string }) {
+  return (
+    <a className="live-wa-btn" href={waHref(phone)} target="_blank" rel="noopener" title="WhatsApp" onClick={e => e.stopPropagation()}>
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm5.2 14.3c-.2.6-1.3 1.2-1.8 1.3-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.5-.6-2.6-1.1-4.3-3.7-4.4-3.9-.1-.2-1-1.3-1-2.5s.6-1.8.8-2c.2-.2.5-.3.6-.3h.5c.2 0 .4 0 .5.4.2.5.7 1.7.7 1.8.1.1.1.3 0 .4-.4.8-.8 1-.9 1.2-.1.2-.1.3 0 .5.3.6 1 1.3 1.6 1.8.7.6 1.3.9 1.6 1 .2.1.4.1.5-.1.2-.2.7-.8.9-1.1.2-.2.3-.2.5-.1l1.6.8c.2.1.4.2.4.3.1.2.1.6-.1 1.1Z"/>
+      </svg>
+    </a>
+  )
+}
 
 export default function LiveClient() {
   const [tab, setTab] = useState<'live' | 'customers' | 'report'>('live')
@@ -98,6 +110,8 @@ export default function LiveClient() {
     setSales(prev => [...prev, sale])
     setAllSales(prev => [...prev, sale])
     setFPrice('')
+    setFPhone('')
+    setFUser('')
     setHint(null)
     setAdding(false)
   }
@@ -161,18 +175,20 @@ export default function LiveClient() {
   let statTotal = 0, statPaid = 0
   for (const g of groups) { const t = custTotals(g.items); statTotal += t.total; statPaid += t.paid }
 
-  /* ── styles ── */
-  const wrap: React.CSSProperties = { maxWidth: 920, margin: '0 auto', paddingBottom: 60 }
-  const panelS: React.CSSProperties = { background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: 16, marginBottom: 20 }
-  const inputS: React.CSSProperties = { width: '100%', border: '1px solid #E4DFD6', borderRadius: 7, padding: '9px 10px', background: '#F3F0EB', color: '#221F1B', fontSize: 14, fontFamily: 'inherit' }
+  /* ── shared styles ── */
+  const inputS: React.CSSProperties = { width: '100%', border: '1px solid #E4DFD6', borderRadius: 7, padding: '11px 12px', background: '#F3F0EB', color: '#221F1B', fontSize: 15, fontFamily: 'inherit' }
   const btnPrimary: React.CSSProperties = { background: '#C4295A', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }
   const btnGhost: React.CSSProperties = { background: '#fff', color: '#221F1B', border: '1px solid #E4DFD6', borderRadius: 8, padding: '9px 14px', fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }
+  const panelS: React.CSSProperties = { background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: 16, marginBottom: 20 }
+  const cardS: React.CSSProperties = { background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, overflow: 'hidden' }
   const statCardS = (color?: string): React.CSSProperties => ({ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: '14px 16px', color: color ?? undefined })
+  const TABS = [{ key: 'live', label: 'ლაივი' }, { key: 'customers', label: 'მომხმარებლები' }, { key: 'report', label: 'რეპორტი' }] as const
 
   return (
-    <div style={wrap}>
-      {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+    <div className="live-wrap">
+
+      {/* ── Top bar (desktop) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#C4295A', display: 'inline-block', boxShadow: '0 0 0 3px #FBE7ED', flexShrink: 0 }} />
           <h1 style={{ fontSize: 17, fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>ლაივ გაყიდვების ჟურნალი</h1>
@@ -189,11 +205,11 @@ export default function LiveClient() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid #E4DFD6' }}>
-        {(['live', 'customers', 'report'] as const).map(t => (
-          <div key={t} onClick={() => setTab(t)} style={{ padding: '9px 4px', marginRight: 18, fontWeight: 600, fontSize: 14, color: tab === t ? '#221F1B' : '#7A7368', cursor: 'pointer', borderBottom: tab === t ? '2px solid #C4295A' : '2px solid transparent', userSelect: 'none' }}>
-            {t === 'live' ? 'ცოცხალი ლაივი' : t === 'customers' ? 'მომხმარებლები' : 'რეპორტი'}
+      {/* Desktop tabs */}
+      <div className="live-desktop-tabs" style={{ gap: 4, marginBottom: 18, borderBottom: '1px solid #E4DFD6' }}>
+        {TABS.map(t => (
+          <div key={t.key} onClick={() => setTab(t.key)} style={{ padding: '9px 4px', marginRight: 18, fontWeight: 600, fontSize: 14, color: tab === t.key ? '#221F1B' : '#7A7368', cursor: 'pointer', borderBottom: tab === t.key ? '2px solid #C4295A' : '2px solid transparent', userSelect: 'none' }}>
+            {t.label}
           </div>
         ))}
       </div>
@@ -201,104 +217,110 @@ export default function LiveClient() {
       {/* ── LIVE TAB ── */}
       {tab === 'live' && (
         <>
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
-            <div style={statCardS()}>
-              <div style={{ fontSize: 12, color: '#7A7368', fontWeight: 600, marginBottom: 6 }}>სულ ნავაჭრი ამ ლაივში</div>
-              <div style={{ ...S, fontSize: 22, fontWeight: 600 }}>{fmt(statTotal)}</div>
-            </div>
-            <div style={statCardS('#147D6F')}>
-              <div style={{ fontSize: 12, color: '#7A7368', fontWeight: 600, marginBottom: 6 }}>მიღებული</div>
-              <div style={{ ...S, fontSize: 22, fontWeight: 600, color: '#147D6F' }}>{fmt(statPaid)}</div>
-            </div>
-            <div style={statCardS('#B4791C')}>
-              <div style={{ fontSize: 12, color: '#7A7368', fontWeight: 600, marginBottom: 6 }}>მისაღები დარჩენილი</div>
-              <div style={{ ...S, fontSize: 22, fontWeight: 600, color: '#B4791C' }}>{fmt(statTotal - statPaid)}</div>
+          {/* Mobile banner stats */}
+          <div className="live-banner" style={{ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 12, color: '#7A7368', fontWeight: 600 }}>სულ ნავაჭრი ამ ლაივში</div>
+            <div style={{ ...S, fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em', margin: '2px 0 10px' }}>{fmt(statTotal)}</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1, background: '#F3F0EB', borderRadius: 9, padding: '8px 10px' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7368' }}>მიღებული</div>
+                <div style={{ ...S, fontWeight: 700, fontSize: 16, marginTop: 1, color: '#147D6F' }}>{fmt(statPaid)}</div>
+              </div>
+              <div style={{ flex: 1, background: '#F3F0EB', borderRadius: 9, padding: '8px 10px' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#7A7368' }}>დარჩენილი</div>
+                <div style={{ ...S, fontWeight: 700, fontSize: 16, marginTop: 1, color: '#B4791C' }}>{fmt(statTotal - statPaid)}</div>
+              </div>
             </div>
           </div>
 
-          {/* Add form */}
-          <div style={panelS}>
-            <h2 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 12px', color: '#7A7368' }}>ახალი შეძენის დამატება</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr .9fr auto', gap: 8, alignItems: 'end' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11.5, color: '#7A7368', fontWeight: 600, marginBottom: 4 }}>ტელეფონის ნომერი</label>
-                <input style={inputS} value={fPhone} onChange={e => setFPhone(e.target.value)} placeholder="5xx xx xx xx" inputMode="numeric" />
+          {/* Desktop grid stats */}
+          <div className="live-stats-grid">
+            {[
+              { label: 'სულ ნავაჭრი ამ ლაივში', val: fmt(statTotal) },
+              { label: 'მიღებული', val: fmt(statPaid), color: '#147D6F' },
+              { label: 'მისაღები დარჩენილი', val: fmt(statTotal - statPaid), color: '#B4791C' },
+            ].map(item => (
+              <div key={item.label} style={statCardS()}>
+                <div style={{ fontSize: 12, color: '#7A7368', fontWeight: 600, marginBottom: 6 }}>{item.label}</div>
+                <div style={{ ...S, fontSize: 22, fontWeight: 600, color: item.color }}>{item.val}</div>
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11.5, color: '#7A7368', fontWeight: 600, marginBottom: 4 }}>ტიკტოკ Username</label>
-                <input style={inputS} value={fUser} onChange={e => setFUser(e.target.value)} placeholder="@username" />
+            ))}
+          </div>
+
+          {/* Add form — sticky on mobile */}
+          <div className="live-addpanel">
+            <div className="live-add-form">
+              <div className="live-phone-row">
+                <input style={inputS} value={fPhone} onChange={e => setFPhone(e.target.value)} placeholder="ტელეფონის ნომერი" inputMode="numeric" />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11.5, color: '#7A7368', fontWeight: 600, marginBottom: 4 }}>ფასი (₾)</label>
-                <input style={inputS} type="number" min="0" step="1" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="0"
-                  onKeyDown={e => e.key === 'Enter' && addSale()} />
+              <div className="live-phone-row">
+                <input style={inputS} value={fUser} onChange={e => setFUser(e.target.value)} placeholder="ტიკტოკ Username" />
+                <input style={{ ...inputS, flex: '0 0 110px' }} type="number" min="0" step="1" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="ფასი ₾" inputMode="decimal" onKeyDown={e => e.key === 'Enter' && addSale()} />
               </div>
-              <button style={{ ...btnPrimary, height: 38, width: '100%' }} onClick={addSale} disabled={adding}>
+              <button className="live-addbtn" style={btnPrimary} onClick={addSale} disabled={adding}>
                 {adding ? '...' : 'დამატება'}
               </button>
             </div>
-            {hint && (
-              <div style={{ marginTop: 8, fontSize: 12.5, color: hint.good ? '#147D6F' : '#C4295A', fontWeight: hint.good ? 600 : 400 }}>
-                {hint.text}
-              </div>
-            )}
+            {hint && <div style={{ marginTop: 6, fontSize: 12.5, color: hint.good ? '#147D6F' : '#C4295A', fontWeight: hint.good ? 600 : 400 }}>{hint.text}</div>}
           </div>
 
           {/* Customer cards */}
-          {groups.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#7A7368', padding: '40px 10px', fontSize: 14 }}>ამ ლაივში ჯერ არაფერი გაყიდულა.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {groups.map(g => {
-                const t = custTotals(g.items)
-                return (
-                  <div key={g.phone} style={{ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', gap: 10, flexWrap: 'wrap' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14.5 }}>{g.username || '(username არ მითითებულა)'}</div>
-                        <div style={{ ...S, fontSize: 12.5, color: '#7A7368' }}>{g.phone}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 10.5, color: '#7A7368', fontWeight: 600, marginBottom: 1 }}>ჯამი</div>
-                          <div style={{ ...S, fontWeight: 600, fontSize: 14.5 }}>{fmt(t.total)}</div>
+          <div className="live-list-wrap">
+            {groups.length === 0
+              ? <div style={{ textAlign: 'center', color: '#7A7368', padding: '40px 10px', fontSize: 14 }}>ამ ლაივში ჯერ არაფერი გაყიდულა.</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {groups.map(g => {
+                  const t = custTotals(g.items)
+                  return (
+                    <div key={g.phone} style={cardS}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.username || '(username არ მითითებულა)'}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ ...S, fontSize: 12.5, color: '#7A7368' }}>{g.phone}</span>
+                            <WaBtn phone={g.phone} />
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 10.5, color: '#7A7368', fontWeight: 600, marginBottom: 1 }}>დარჩენილი</div>
-                          <div style={{ ...S, fontWeight: 600, fontSize: 14.5, color: t.due > 0 ? '#B4791C' : '#147D6F' }}>{fmt(t.due)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 10.5, color: '#7A7368', fontWeight: 600, marginBottom: 1 }}>ჯამი</div>
+                            <div style={{ ...S, fontWeight: 600, fontSize: 14.5 }}>{fmt(t.total)}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 10.5, color: '#7A7368', fontWeight: 600, marginBottom: 1 }}>დარჩენილი</div>
+                            <div style={{ ...S, fontWeight: 600, fontSize: 14.5, color: t.due > 0 ? '#B4791C' : '#147D6F' }}>{fmt(t.due)}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div style={{ borderTop: '1px solid #E4DFD6', padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {g.items.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((it, idx) => (
-                        <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13.5, gap: 8 }}>
-                          <span>შეძენა #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ ...S, fontWeight: 600 }}>{fmt(it.price)}</span>
-                            <button onClick={() => togglePaid(it.id, it.paid)}
-                              style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, border: '1px solid transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', background: it.paid ? '#E4F3EE' : '#FBEEDA', color: it.paid ? '#147D6F' : '#B4791C' }}>
-                              {it.paid ? '✓ ჩარიცხულია' : 'არ არის ჩარიცხული'}
+                      <div style={{ borderTop: '1px solid #E4DFD6', padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {g.items.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((it, idx) => (
+                          <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13.5, gap: 8, flexWrap: 'wrap' }}>
+                            <span>შეძენა #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ ...S, fontWeight: 600 }}>{fmt(it.price)}</span>
+                              <button onClick={() => togglePaid(it.id, it.paid)}
+                                style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 20, border: '1px solid transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', background: it.paid ? '#E4F3EE' : '#FBEEDA', color: it.paid ? '#147D6F' : '#B4791C' }}>
+                                {it.paid ? '✓ ჩარიცხულია' : 'არ არის ჩარიცხული'}
+                              </button>
+                              <button onClick={() => deleteSale(it.id)} style={{ background: 'none', border: 'none', color: '#7A7368', cursor: 'pointer', fontSize: 15, padding: '3px 5px', borderRadius: 4 }}>✕</button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ padding: '10px 14px 14px', borderTop: '1px dashed #E4DFD6', display: 'flex', justifyContent: 'flex-end' }}>
+                        {t.due > 0
+                          ? <button className="live-settle-btn" style={{ ...btnGhost, fontSize: 13, padding: '9px 14px' }} onClick={() => settlePhone(g.phone)}>
+                              დარჩენილი {fmt(t.due)} ჩარიცხულად მონიშვნა
                             </button>
-                            <button onClick={() => deleteSale(it.id)}
-                              style={{ background: 'none', border: 'none', color: '#7A7368', cursor: 'pointer', fontSize: 13, padding: '2px 4px', borderRadius: 4 }}>✕</button>
-                          </span>
-                        </div>
-                      ))}
+                          : <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: '#E4F3EE', color: '#147D6F' }}>სრულად ჩარიცხულია</span>
+                        }
+                      </div>
                     </div>
-                    <div style={{ padding: '10px 14px 14px', borderTop: '1px dashed #E4DFD6', display: 'flex', justifyContent: 'flex-end' }}>
-                      {t.due > 0
-                        ? <button style={{ ...btnGhost, fontSize: 12.5, padding: '5px 10px', borderRadius: 6 }} onClick={() => settlePhone(g.phone)}>
-                            დარჩენილი {fmt(t.due)} ჩარიცხულად მონიშვნა
-                          </button>
-                        : <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#E4F3EE', color: '#147D6F' }}>სრულად ჩარიცხულია</span>
-                      }
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                  )
+                })}
+              </div>
+            }
+          </div>
         </>
       )}
 
@@ -320,13 +342,16 @@ export default function LiveClient() {
               g.items.forEach(i => { bySession[i.sessionId] = (bySession[i.sessionId] || 0) + Number(i.price) })
               const isOpen = openCust === g.phone
               return (
-                <div key={g.phone} style={{ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
+                <div key={g.phone} style={{ ...cardS, marginBottom: 8 }}>
                   <div onClick={() => setOpenCust(isOpen ? null : g.phone)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer', gap: 10 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{g.username || '(username არ მითითებულა)'}</div>
-                      <div style={{ ...S, fontSize: 12, color: '#7A7368' }}>{g.phone} · {g.items.length} შეძენა</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.username || '(username არ მითითებულა)'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ ...S, fontSize: 12, color: '#7A7368' }}>{g.phone} · {g.items.length} შეძენა</span>
+                        <WaBtn phone={g.phone} />
+                      </div>
                     </div>
-                    <div style={{ ...S, fontWeight: 700, fontSize: 15 }}>{fmt(t.total)}</div>
+                    <div style={{ ...S, fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{fmt(t.total)}</div>
                   </div>
                   {isOpen && (
                     <div style={{ borderTop: '1px solid #E4DFD6', padding: '10px 14px 14px' }}>
@@ -351,7 +376,6 @@ export default function LiveClient() {
       {/* ── REPORT TAB ── */}
       {tab === 'report' && (() => {
         if (allSales.length === 0) return <div style={{ textAlign: 'center', color: '#7A7368', padding: '40px 10px', fontSize: 14 }}>ჯერ არანაირი მონაცემი არ არსებობს.</div>
-
         let grandTotal = 0, grandPaid = 0
         const sessionRows = sessions.map(sess => {
           const sg = groupByPhone(allSales.filter(s => s.sessionId === sess.id))
@@ -360,7 +384,6 @@ export default function LiveClient() {
           grandTotal += total; grandPaid += paid
           return { sess, customers: sg.length, total, paid, due: total - paid }
         }).filter(r => r.total > 0)
-
         const custGroups = groupByPhone(allSales)
         const custRows = custGroups.map(g => {
           const t = custTotals(g.items)
@@ -369,13 +392,12 @@ export default function LiveClient() {
         })
         const byDesc = custRows.slice().sort((a, b) => b.t.total - a.t.total)
         const byAsc = custRows.slice().sort((a, b) => a.t.total - b.t.total)
-
         const thS: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#7A7368', padding: '8px 4px', borderBottom: '1px solid #E4DFD6', textAlign: 'left' }
         const tdS: React.CSSProperties = { fontSize: 13.5, padding: '8px 4px', borderBottom: '1px solid #F3F0EB' }
-
         return (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 20 }}>
+            {/* Stats — 2x2 on mobile, 4-col on desktop */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
               {[
                 { label: 'სულ ლაივი', val: sessions.length.toString() },
                 { label: 'საერთო შემოსავალი', val: fmt(grandTotal) },
@@ -389,31 +411,25 @@ export default function LiveClient() {
               ))}
             </div>
 
+            {/* Sessions — cards on mobile, table on desktop */}
             <div style={panelS}>
-              <h2 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 12px', color: '#7A7368' }}>ლაივების შემოსავლიანობა</h2>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead><tr>
-                  <th style={thS}>ლაივი</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>მომხმ.</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>შემოსავალი</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>ჩარიცხული</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>დარჩენილი</th>
-                </tr></thead>
-                <tbody>
-                  {sessionRows.map(r => (
-                    <tr key={r.sess.id}>
-                      <td style={tdS}>{r.sess.label}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S }}>{r.customers}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S }}>{fmt(r.total)}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S, color: '#147D6F' }}>{fmt(r.paid)}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S, color: r.due > 0 ? '#B4791C' : '#147D6F' }}>{fmt(r.due)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h2 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: '#7A7368' }}>ლაივების შემოსავლიანობა</h2>
+              {sessionRows.map(r => (
+                <div key={r.sess.id} style={{ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{r.sess.label}</span>
+                    <span style={{ ...S, fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{fmt(r.total)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 5, fontSize: 12.5, color: '#7A7368', flexWrap: 'wrap' }}>
+                    <span>მომხმ. <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.customers}</b></span>
+                    <span>ჩარიცხული <b style={{ color: '#147D6F', ...S }}>{fmt(r.paid)}</b></span>
+                    <span>დარჩენილი <b style={{ color: r.due > 0 ? '#B4791C' : '#147D6F', ...S }}>{fmt(r.due)}</b></span>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 20 }}>
               {[{ title: 'ყველაზე აქტიური მომხმარებლები', rows: byDesc.slice(0, 5) },
                 { title: 'ყველაზე პასიური მომხმარებლები', rows: byAsc.slice(0, 5) }].map(col => (
                 <div key={col.title} style={panelS}>
@@ -432,31 +448,34 @@ export default function LiveClient() {
             </div>
 
             <div style={panelS}>
-              <h2 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 12px', color: '#7A7368' }}>ყველა მომხმარებელი — აქტივობა და ლაივების რაოდენობა</h2>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead><tr>
-                  <th style={thS}>მომხმარებელი</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>ლაივი</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>შეძენა</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>სულ თანხა</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>დარჩენილი</th>
-                </tr></thead>
-                <tbody>
-                  {byDesc.map(r => (
-                    <tr key={r.g.phone}>
-                      <td style={tdS}><div style={{ fontWeight: 500 }}>{r.g.username || '—'}</div><div style={{ ...S, fontSize: 11, color: '#7A7368' }}>{r.g.phone}</div></td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S }}>{r.sessionsCount}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S }}>{r.purchases}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S }}>{fmt(r.t.total)}</td>
-                      <td style={{ ...tdS, textAlign: 'right', ...S, color: r.t.due > 0 ? '#B4791C' : '#147D6F' }}>{fmt(r.t.due)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h2 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 12px', color: '#7A7368' }}>ყველა მომხმარებელი — აქტივობა</h2>
+              {byDesc.map(r => (
+                <div key={r.g.phone} style={{ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{r.g.username || '—'}</div>
+                    <div style={{ ...S, fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{fmt(r.t.total)}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 5, fontSize: 12.5, color: '#7A7368', flexWrap: 'wrap' }}>
+                    <span style={{ ...S }}>{r.g.phone}</span>
+                    <span>ლაივი <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.sessionsCount}</b></span>
+                    <span>შეძენა <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.purchases}</b></span>
+                    <span>დარჩენილი <b style={{ color: r.t.due > 0 ? '#B4791C' : '#147D6F', ...S }}>{fmt(r.t.due)}</b></span>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )
       })()}
+
+      {/* Bottom nav — mobile only */}
+      <nav className="live-bottom-nav">
+        {TABS.map(t => (
+          <button key={t.key} className={`lnav-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
