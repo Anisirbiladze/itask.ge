@@ -327,6 +327,7 @@ select {
   text-decoration: none; vertical-align: middle; margin-left: 6px;
 }
 .live-wa-btn svg { width: 13px; height: 13px; }
+.live-wa-btn:hover { opacity: .75; }
 
 @media (max-width: 700px) {
   .live-wrap { padding-bottom: calc(58px + env(safe-area-inset-bottom) + 10px); }
