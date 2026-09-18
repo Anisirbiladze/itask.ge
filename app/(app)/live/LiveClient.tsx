@@ -62,13 +62,10 @@ export default function LiveClient() {
     setSales(data)
   }, [])
 
-  const fetchAllSales = useCallback(async () => {
-    const res = await fetch('/api/live/sales?sessionId=ALL')
-    const data: LiveSale[] = await res.json()
-    setAllSales(data)
-  }, [])
-
-  useEffect(() => { fetchSessions() }, [fetchSessions])
+  useEffect(() => {
+    fetchSessions()
+    fetch('/api/live/sales?sessionId=ALL').then(r => r.json()).then(setAllSales)
+  }, [fetchSessions])
   useEffect(() => { if (currentId) fetchSales(currentId) }, [currentId, fetchSales])
   useEffect(() => {
     if (tab === 'customers' || tab === 'report') {
@@ -139,6 +136,16 @@ export default function LiveClient() {
       setHint(null)
     }
   }, [fPhone, allSales, fUser])
+
+  /* ── no sessions prompt ── */
+  if (sessions.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>ჯერ არც ერთი ლაივი არ არის</h2>
+      <p style={{ color: '#7A7368', marginBottom: 20 }}>შექმენი პირველი ლაივი და დაიწყე გაყიდვების ჩაწერა.</p>
+      <button style={{ background: '#C4295A', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 22px', fontWeight: 700, cursor: 'pointer', fontSize: 15 }} onClick={newSession}>+ ახალი ლაივი</button>
+    </div>
+  )
 
   /* ── derived ── */
   const groups = groupByPhone(sales).sort((a, b) => {
