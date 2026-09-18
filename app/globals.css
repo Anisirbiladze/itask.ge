@@ -6,16 +6,19 @@
 @font-face { font-family: 'Mersad'; src: url('/fonts/Mersad-ExtraBold.otf') format('opentype'); font-weight: 800; font-display: swap; }
 
 :root {
-  --paper:    #FBFBFC;
+  --paper:    #F1F3F6;
   --surface:  #FFFFFF;
+  --raise:    #FFFFFF;
   --ink:      #08090B;
   --ink-2:    #3C4048;
   --ink-3:    #8B909A;
   --muted:    #8B909A;
-  --line:     #EDEEF1;
-  --line-soft:#F5F6F8;
-  --cell:     #F2F4F7;
-  --tint:     #F3F4F6;
+  --line:     #E4E7EC;
+  --line-soft:#EDF1F4;
+  --hair:     #E4E7EC;
+  --cell:     #FFFFFF;
+  --cell-hover:#F7F9FC;
+  --tint:     #EEF0F3;
   --nav:      #FFFFFF;
 
   --done:    #12B76A; --done-2:  #039855;
@@ -71,8 +74,8 @@ label {
 .board-cols { display: grid; grid-template-columns: 1fr 56px 126px 158px 104px 162px 44px; gap: 8px; padding: 0 0 8px; font-size: 10.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; font-family: var(--font-noto-geo), 'Noto Sans Georgian', sans-serif; text-transform: uppercase; }
 .board-cols span:nth-child(n+2) { text-align: center; }
 @keyframes row-in { from { opacity:0; transform: translateY(7px) } to { opacity:1; transform:none } }
-.cel { background: var(--cell); border-radius: 9px; display: flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 12px; transition: background-color .16s; }
-.board-row:hover .cel { background: #EAEDF2; }
+.cel { background: var(--cell); border-radius: 9px; display: flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 12px; transition: background-color .16s; box-shadow: 0 0 0 1px var(--hair), 0 1px 2px rgba(8,9,11,.04); }
+.board-row:hover .cel { background: var(--cell-hover); }
 .cel-task { justify-content: flex-start; position: relative; padding-left: 18px; cursor: pointer; font-size: 13.5px; font-weight: 500; overflow: hidden; }
 .cel-task::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--gc, var(--accent)); transition: width .2s var(--spring); border-radius: 0 2px 2px 0; }
 .board-row:hover .cel-task::before { width: 7px; }
