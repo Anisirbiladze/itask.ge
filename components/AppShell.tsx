@@ -76,7 +76,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   }, [translations])
 
   const activeCo = activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null
-  const sidebarAccent = activeCo?.color ?? 'var(--accent)'
+  const sbTheme = getSbTheme(activeCo)
 
   function fetchCompanies() {
     fetch('/api/companies')
@@ -104,15 +104,9 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
       {/* Sidebar / Rail */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
-        background: 'var(--surface)', borderRight: '1px solid var(--line)',
         padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 1, zIndex: 40,
-        borderTop: `3px solid ${sidebarAccent}`,
-        ['--accent' as string]: sidebarAccent,
-        ['--accent-top' as string]: activeCo?.accentTop ?? 'var(--ink)',
-        ['--accent-ink' as string]: activeCo?.accentInk ?? '#FFFFFF',
-        ['--accent-text' as string]: activeCo?.accentText ?? 'var(--ink)',
-        ['--accent-rgb' as string]: activeCo?.accentRgb ?? '8,9,11',
-        transition: 'border-top-color .3s ease',
+        ...sbTheme,
+        transition: 'background-color .35s cubic-bezier(.22,.9,.3,1)',
       }} className="sidebar">
         {/* Brand / Logo slot */}
         <SidebarBrand activeCompany={activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null} />
@@ -129,24 +123,22 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         })}
 
         {/* Companies filter */}
-        <div style={{ height: 1, background: 'var(--line)', margin: '16px 10px 12px' }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', padding: '0 10px 8px', letterSpacing: '.1em', fontFamily: 'var(--font-noto-geo)', textTransform: 'uppercase' }}>
+        <div style={{ height: 1, background: 'var(--sb-line)', margin: '16px 10px 12px' }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--sb-faint)', padding: '0 10px 8px', letterSpacing: '.1em', fontFamily: 'var(--font-noto-geo)', textTransform: 'uppercase' }}>
           {t('nav.companies')}
         </div>
         <CompanyFilter companies={companies} active={activeCompany} onChange={setActiveCompany} />
 
         {me && (
-          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', borderRadius: 10, cursor: 'pointer', transition: 'background-color .16s' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--line-soft)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-            <div style={{ width: 28, height: 28, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
-              <Avatar name={me.displayName} size={28} photoUrl={me.photoUrl} />
+          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--sb-line)', paddingTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,.16)' }}>
+              <Avatar name={me.displayName} size={30} photoUrl={me.photoUrl} />
             </div>
             <span style={{ flex: 1, overflow: 'hidden' }}>
-              <b style={{ color: 'var(--ink)', fontWeight: 600, display: 'block', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.displayName}</b>
-              <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{me.role}</span>
+              <b style={{ color: 'var(--sb-ink)', fontWeight: 700, display: 'block', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.displayName}</b>
+              <span style={{ fontSize: 11, color: 'var(--sb-faint)', fontWeight: 600 }}>{me.role}</span>
             </span>
-            <button onClick={handleLogout} title="Sign out" style={{ background: 'none', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px' }}>↪</button>
+            <button onClick={handleLogout} title="Sign out" style={{ background: 'none', border: 0, color: 'var(--sb-faint)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px' }}>↪</button>
           </div>
         )}
       </aside>
@@ -217,24 +209,59 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   )
 }
 
+/* ── Sidebar theme helper ──────────────────────────────────────── */
+function isLightColor(hex: string): boolean {
+  if (!hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128
+}
+
+function getSbTheme(co: Company | null): React.CSSProperties {
+  if (!co) return {
+    background: '#12171D',
+    ['--sb-ink' as string]: '#FFFFFF',
+    ['--sb-dim' as string]: 'rgba(255,255,255,.62)',
+    ['--sb-faint' as string]: 'rgba(255,255,255,.40)',
+    ['--sb-hov' as string]: 'rgba(255,255,255,.08)',
+    ['--sb-act' as string]: 'rgba(255,255,255,.15)',
+    ['--sb-line' as string]: 'rgba(255,255,255,.14)',
+  }
+  const light = isLightColor(co.color)
+  return {
+    background: co.color,
+    ['--sb-ink' as string]: light ? '#0A0A0B' : '#FFFFFF',
+    ['--sb-dim' as string]: light ? 'rgba(10,10,11,.66)' : 'rgba(255,255,255,.62)',
+    ['--sb-faint' as string]: light ? 'rgba(10,10,11,.45)' : 'rgba(255,255,255,.40)',
+    ['--sb-hov' as string]: light ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.08)',
+    ['--sb-act' as string]: light ? 'rgba(0,0,0,.13)' : 'rgba(255,255,255,.15)',
+    ['--sb-line' as string]: light ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.14)',
+  }
+}
+
 /* ── Sidebar brand slot ──────────────────────────────────────────── */
 function SidebarBrand({ activeCompany }: { activeCompany: Company | null }) {
   if (!activeCompany) {
     return (
-      <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em', padding: '4px 10px 16px', display: 'flex', alignItems: 'center', gap: 9 }}>
-        <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'block', transform: 'rotate(45deg)', flexShrink: 0 }} />
-        itask.ge
+      <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.03em', padding: '2px 10px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(255,255,255,.14)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, color: 'var(--sb-ink)' }}>IT</span>
+        <span><b style={{ display: 'block', color: 'var(--sb-ink)', lineHeight: 1.1, fontSize: 15 }}>itask.ge</b><span style={{ fontSize: 10.5, color: 'var(--sb-faint)', fontWeight: 600 }}>ჰოლდინგი</span></span>
       </div>
     )
   }
+  const light = isLightColor(activeCompany.color)
+  const mkBg = light ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.14)'
   return (
-    <div style={{ padding: '4px 10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 10px 24px' }}>
       {activeCompany.logoUrl ? (
-        <img src={activeCompany.logoUrl} alt={activeCompany.name} style={{ maxHeight: 56, maxWidth: 170, objectFit: 'contain', objectPosition: 'left' }} />
+        <img src={activeCompany.logoUrl} alt={activeCompany.name} style={{ maxHeight: 44, maxWidth: 160, objectFit: 'contain', objectPosition: 'left' }} />
       ) : (
-        <span style={{ fontSize: 16, fontWeight: 700, color: activeCompany.accentText }}>{activeCompany.name}</span>
+        <>
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: mkBg, display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, color: 'var(--sb-ink)' }}>{activeCompany.name[0]}</span>
+          <span><b style={{ display: 'block', color: 'var(--sb-ink)', lineHeight: 1.1, fontSize: 15 }}>{activeCompany.name}</b><span style={{ fontSize: 10.5, color: 'var(--sb-faint)', fontWeight: 600 }}>itask.ge</span></span>
+        </>
       )}
-      <span style={{ fontSize: 11, color: '#66707C' }}>itask.ge</span>
     </div>
   )
 }
@@ -243,25 +270,25 @@ function SidebarBrand({ activeCompany }: { activeCompany: Company | null }) {
 function CompanyFilter({ companies, active, onChange }: { companies: Company[], active: string | null, onChange: (id: string | null) => void }) {
   const totalOpen = companies.reduce((s, c) => s + c.openCount, 0)
   const coStyle = (isActive: boolean): React.CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-    background: isActive ? 'var(--tint)' : 'none', border: 0,
-    color: isActive ? 'var(--ink)' : 'var(--ink-3)',
-    fontSize: 13, fontWeight: isActive ? 600 : 500,
-    padding: '7px 10px', borderRadius: 9, cursor: 'pointer', textAlign: 'left',
-    transition: 'background-color .16s, color .16s',
+    display: 'flex', alignItems: 'center', gap: 11, width: '100%',
+    background: isActive ? 'var(--sb-act)' : 'none', border: 0,
+    color: isActive ? 'var(--sb-ink)' : 'var(--sb-dim)',
+    fontSize: 13, fontWeight: isActive ? 700 : 500,
+    padding: '8px 11px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+    transition: 'background-color .18s, color .18s, padding-left .22s',
   })
   return (
     <>
       <button onClick={() => onChange(null)} style={coStyle(active === null)}>
-        <span style={{ width: 7, height: 7, borderRadius: '2.5px', background: 'var(--ink-3)', flexShrink: 0 }} />
+        <span style={{ width: 9, height: 9, borderRadius: 3, background: 'var(--sb-dim)', flexShrink: 0, boxShadow: active === null ? '0 0 0 3.5px var(--sb-act)' : 'none' }} />
         All
-        <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--ink-3)' }}>{totalOpen}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--sb-faint)', fontWeight: 600 }}>{totalOpen}</span>
       </button>
       {companies.map(c => (
         <button key={c.id} onClick={() => onChange(c.id)} style={coStyle(active === c.id)}>
-          <span style={{ width: 7, height: 7, borderRadius: '2.5px', background: c.color, flexShrink: 0 }} />
+          <span style={{ width: 9, height: 9, borderRadius: 3, background: c.color, flexShrink: 0, boxShadow: active === c.id ? '0 0 0 3.5px rgba(255,255,255,.22)' : 'none', transition: 'box-shadow .25s' }} />
           {c.name}
-          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--ink-3)' }}>{c.openCount}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--sb-faint)', fontWeight: 600 }}>{c.openCount}</span>
         </button>
       ))}
     </>
