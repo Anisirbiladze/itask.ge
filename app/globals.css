@@ -113,7 +113,7 @@ label {
 .pr-pill-mid  { background: #FEF9C3; color: #854D0E; }
 .pr-pill-low  { background: #F1F5F9; color: #64748B; }
 /* segmented control */
-.seg { display: inline-flex; padding: 3px; background: var(--tint); border-radius: 10px; gap: 2px; }
+.seg { display: inline-flex; padding: 3px; background: var(--tint); border-radius: 10px; gap: 2px; border: 1px solid var(--line); }
 .seg-btn { padding: 6px 13px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); font-family: var(--font-noto-geo),'Noto Sans Georgian',sans-serif; border: 0; background: none; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; }
 .seg-btn.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(8,9,11,.1); }
 .seg-btn:not(.on):hover { color: var(--ink-2); }
