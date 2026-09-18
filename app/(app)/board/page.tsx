@@ -36,7 +36,7 @@ export default async function BoardPage() {
     prisma.user.findMany({
       where: { archived: false },
       orderBy: { name: 'asc' },
-      select: { id: true, displayName: true },
+      select: { id: true, displayName: true, photoUrl: true },
     }),
   ])
 

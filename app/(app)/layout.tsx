@@ -42,7 +42,7 @@ function getCachedUser(userId: string) {
   return unstable_cache(
     () => prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, displayName: true, role: true, jobTitle: true, functionGroup: true, mustChangePw: true, archived: true },
+      select: { id: true, name: true, displayName: true, role: true, jobTitle: true, functionGroup: true, mustChangePw: true, archived: true, photoUrl: true },
     }),
     [`user-${userId}`],
     { revalidate: 20 }
@@ -91,6 +91,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     role: user.role as 'CEO' | 'MEMBER',
     mustChangePw: user.mustChangePw,
     functionGroup: user.functionGroup,
+    photoUrl: user.photoUrl ?? null,
     companies: userCompanies,
   }
 

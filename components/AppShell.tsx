@@ -14,6 +14,7 @@ export interface Me {
   role: 'CEO' | 'MEMBER'
   mustChangePw: boolean
   functionGroup: string
+  photoUrl?: string | null
   companies: { id: string; name: string; color: string }[]
 }
 export interface Company {
@@ -149,7 +150,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--line-soft)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
             <div style={{ width: 28, height: 28, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
-              <Avatar name={me.displayName} size={28} />
+              <Avatar name={me.displayName} size={28} photoUrl={me.photoUrl} />
             </div>
             <span style={{ flex: 1, overflow: 'hidden' }}>
               <b style={{ color: 'var(--ink)', fontWeight: 600, display: 'block', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.displayName}</b>
@@ -278,7 +279,14 @@ function CompanyFilter({ companies, active, onChange }: { companies: Company[], 
 }
 
 /* ── Avatar ───────────────────────────────────────────────────────── */
-export function Avatar({ name, size = 27 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 27, photoUrl }: { name: string; size?: number; photoUrl?: string | null }) {
+  if (photoUrl) {
+    return (
+      <img src={photoUrl} alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block',
+          boxShadow: '0 0 0 2px rgba(255,255,255,.9), 0 1px 3px rgba(8,9,11,.15)' }} />
+    )
+  }
   return (
     <span style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 700, color: '#fff', background: avatarColor(name) }}>
       {initials(name)}

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     select: {
       id: true, name: true, displayName: true, email: true,
       role: true, jobTitle: true, functionGroup: true,
-      archived: true, mustChangePw: true, createdAt: true,
+      photoUrl: true, archived: true, mustChangePw: true, createdAt: true,
     },
   })
 

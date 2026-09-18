@@ -10,7 +10,7 @@ export default async function PeoplePage() {
     prisma.user.findMany({
       where: { archived: false },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, displayName: true, email: true, role: true, jobTitle: true, functionGroup: true, archived: true },
+      select: { id: true, name: true, displayName: true, email: true, role: true, jobTitle: true, functionGroup: true, archived: true, photoUrl: true },
     }),
     prisma.userCompany.findMany(),
     prisma.company.findMany({ where: { archived: false } }),

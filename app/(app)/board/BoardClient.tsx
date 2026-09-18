@@ -20,7 +20,7 @@ export interface Task {
   checklistDone: number
   createdAt: string
   company?: { id: string; name: string; color: string; accentInk: string; accentText: string } | null
-  assignee?: { id: string; displayName: string } | null
+  assignee?: { id: string; displayName: string; photoUrl?: string | null } | null
 }
 
 interface GroupedSection {
@@ -38,11 +38,11 @@ export default function BoardClient({
   initialUsers,
 }: {
   initialTasks: Task[]
-  initialUsers: { id: string; displayName: string }[]
+  initialUsers: { id: string; displayName: string; photoUrl?: string | null }[]
 }) {
   const { activeCompany, companies, me, openNewTask, refreshCompanies } = useApp()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
-  const [users] = useState<{ id: string; displayName: string }[]>(initialUsers)
+  const [users] = useState<{ id: string; displayName: string; photoUrl?: string | null }[]>(initialUsers)
   const [groupBy, setGroupBy] = useState<'company' | 'person'>('company')
   const [filter, setFilter] = useState<'all' | 'stuck' | 'week' | 'unassigned'>('all')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -198,10 +198,10 @@ function BoardSection({ section, groupBy, onRowClick, onAddTask }: {
               <span>დავალება</span>
               <span />
               <span>{groupBy === 'company' ? 'შემსრულებელი' : 'კომპანია'}</span>
+              <span>პრიორიტეტი</span>
               <span>მიმდინარეობა</span>
               <span>დარჩა</span>
               <span>სტატუსი</span>
-              <span>პრ.</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {section.tasks.map((task, i) => (
@@ -257,11 +257,16 @@ function StatusBtn({ status }: { status: string }) {
   )
 }
 
-/* ── Priority circle v4 ───────────────────────────────────────────── */
-const PR_CLS = ['pr-low', 'pr-low', 'pr-mid', 'pr-high']
-function PriorityCircle({ priority }: { priority: number }) {
-  const cls = PR_CLS[Math.min(priority, 3)] ?? 'pr-low'
-  return <button className={`pr-dot ${cls}`} type="button" style={{ pointerEvents: 'none' }} />
+/* ── Priority pill ─────────────────────────────────────────────────────── */
+const PR_PILL = [
+  { label: 'LOW',    cls: 'pr-pill-low'  },
+  { label: 'LOW',    cls: 'pr-pill-low'  },
+  { label: 'MEDIUM', cls: 'pr-pill-mid'  },
+  { label: 'HIGH',   cls: 'pr-pill-high' },
+]
+function PriorityPill({ priority }: { priority: number }) {
+  const { label, cls } = PR_PILL[Math.min(priority, 3)] ?? PR_PILL[0]
+  return <span className={`pr-pill ${cls}`}>{label}</span>
 }
 
 /* ── Task row v4 ──────────────────────────────────────────────────── */
@@ -277,13 +282,16 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay }: {
       </div>
       <div className="cel cel-ow" style={{ justifyContent: 'center' }}>
         {task.assignee
-          ? <Avatar name={task.assignee.displayName} size={34} />
+          ? <Avatar name={task.assignee.displayName} size={34} photoUrl={task.assignee.photoUrl} />
           : <span style={{ color: 'var(--ink-3)', fontSize: 13 }}>—</span>}
       </div>
       <div className="cel cel-nm" style={{ justifyContent: 'center', textAlign: 'center' }}>
         {groupBy === 'company'
           ? (task.assignee?.displayName ?? '—')
           : (task.company ? <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: task.company.accentInk, background: task.company.color }}>{task.company.name}</span> : '—')}
+      </div>
+      <div className="cel">
+        <PriorityPill priority={task.priority} />
       </div>
       <div className="cel" style={{ padding: '0 14px' }}>
         {task.dueAt
@@ -295,9 +303,6 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay }: {
       </div>
       <div className="cel cel-st">
         <StatusBtn status={task.computedStatus} />
-      </div>
-      <div className="cel cel-pr">
-        <PriorityCircle priority={task.priority} />
       </div>
     </div>
   )
