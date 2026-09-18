@@ -13,18 +13,28 @@ export default function TranslationsClient({ saved }: { saved: Record<string, st
   })
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const pageKeys = Object.entries(DEFAULT_TRANSLATIONS).filter(([, e]) => e.page === activePage)
 
   async function handleSave() {
-    setSaving(true)
-    const updates = Object.entries(values).map(([key, value]) => ({
-      key, page: DEFAULT_TRANSLATIONS[key].page, value,
-    }))
-    await fetch('/api/translations', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) })
+    setSaving(true); setSaveError('')
+    try {
+      const updates = Object.entries(values).map(([key, value]) => ({
+        key, page: DEFAULT_TRANSLATIONS[key].page, value,
+      }))
+      const res = await fetch('/api/translations', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setSaveError(d.error ?? `Save failed (${res.status})`)
+      } else {
+        setSavedMsg(true)
+        setTimeout(() => setSavedMsg(false), 2500)
+      }
+    } catch (e) {
+      setSaveError('Network error — could not reach server')
+    }
     setSaving(false)
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 2000)
   }
 
   return (
@@ -53,6 +63,7 @@ export default function TranslationsClient({ saved }: { saved: Record<string, st
           {savedMsg ? '✓ Saved' : saving ? 'Saving…' : 'Save all'}
         </button>
       </div>
+      {saveError && <p style={{ color: 'var(--stuck)', fontSize: 13, marginBottom: 10 }}>⚠ {saveError}</p>}
 
       {/* Strings table */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>

@@ -4,11 +4,6 @@ import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import AppShell, { type Me, type Company } from '@/components/AppShell'
 
-const getCachedTranslations = unstable_cache(
-  () => prisma.translation.findMany(),
-  ['translations'],
-  { revalidate: 3600, tags: ['translations'] }
-)
 
 const getCachedCompanies = unstable_cache(
   () => prisma.company.findMany({ where: { archived: false }, orderBy: { name: 'asc' } }),
@@ -68,7 +63,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getCachedTaskCounts(),
     getCachedAllUsers(),
     getCachedAllMemberships(),
-    getCachedTranslations(),
+    prisma.translation.findMany(),
   ])
 
   if (!user || user.archived) redirect('/login')
