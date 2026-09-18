@@ -94,7 +94,40 @@ export const DEFAULT_TRANSLATIONS: Record<string, TranslationEntry> = {
   'settings.checklist_progress': { page: 'settings', default: 'Checklist drives progress' },
   'settings.members_see_peers':  { page: 'settings', default: 'Members see function peers' },
 
-  /* ── Translations page ────────────────────────────────────────── */
+  /* ── Task detail modal ─────────────────────────────────────────── */
+  'task.created_by':     { page: 'task', default: 'Created' },
+  'task.originally_due': { page: 'task', default: 'Originally due' },
+  'task.due_now':        { page: 'task', default: 'Due now' },
+  'task.checklist':      { page: 'task', default: 'Checklist' },
+  'task.add_image':      { page: 'task', default: 'Add image' },
+  'task.add_link':       { page: 'task', default: 'Add link' },
+  'task.history':        { page: 'task', default: 'History' },
+  'task.btn_edit':       { page: 'task', default: 'Edit task' },
+  'task.btn_change_due': { page: 'task', default: 'Change due' },
+  'task.btn_mark_done':  { page: 'task', default: 'Mark done' },
+  'task.btn_reopen':     { page: 'task', default: 'Reopen' },
+  'task.btn_delete':     { page: 'task', default: 'Delete' },
+  'task.btn_save':       { page: 'task', default: 'Save changes' },
+  'task.btn_cancel':     { page: 'task', default: 'Cancel' },
+  'task.edit_title':     { page: 'task', default: 'Edit task' },
+  'task.field_title':    { page: 'task', default: 'Title' },
+  'task.field_desc':     { page: 'task', default: 'Description' },
+  'task.field_priority': { page: 'task', default: 'Priority' },
+  'task.field_company':  { page: 'task', default: 'Company' },
+  'task.field_assignee': { page: 'task', default: 'Assignee' },
+  'task.priority_low':   { page: 'task', default: 'Low' },
+  'task.priority_mid':   { page: 'task', default: 'Medium' },
+  'task.priority_high':  { page: 'task', default: 'High' },
+  'task.unassigned':     { page: 'task', default: '— Unassigned —' },
+  'task.no_company':     { page: 'task', default: '— None —' },
+  'task.change_due_title': { page: 'task', default: 'Change due date' },
+  'task.reason_label':   { page: 'task', default: 'Reason (required)' },
+  'task.reason_placeholder': { page: 'task', default: 'Why is the due date changing?' },
+  'task.saving':         { page: 'task', default: 'Saving…' },
+  'task.delete_confirm': { page: 'task', default: 'Delete this task? It will be archived.' },
+  'task.parent_task':    { page: 'task', default: 'Parent task' },
+
+  /* ── Translations page ──────────────────────────────────────────── */
   'translations.title':  { page: 'translations', default: 'Translations' },
   'translations.key':    { page: 'translations', default: 'Key' },
   'translations.default':{ page: 'translations', default: 'Default (EN)' },
@@ -103,7 +136,7 @@ export const DEFAULT_TRANSLATIONS: Record<string, TranslationEntry> = {
   'translations.saved':  { page: 'translations', default: 'Saved!' },
 }
 
-export const PAGES = ['global', 'board', 'team', 'people', 'reports', 'settings', 'translations'] as const
+export const PAGES = ['global', 'board', 'team', 'people', 'reports', 'settings', 'task', 'translations'] as const
 export type TranslationPage = typeof PAGES[number]
 
 export const PAGE_LABELS: Record<string, string> = {
@@ -113,5 +146,6 @@ export const PAGE_LABELS: Record<string, string> = {
   people: 'People',
   reports: 'Reports',
   settings: 'Settings',
+  task: 'Task modal',
   translations: 'Translations',
 }
