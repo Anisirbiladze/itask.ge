@@ -4,7 +4,7 @@ import { normalizePhone } from '@/lib/normalizePhone'
 
 /* ── types ── */
 interface LiveSession { id: string; label: string; dateKey: string; createdAt: string }
-interface LiveSale { id: string; sessionId: string; phone: string; username: string; price: number; paid: boolean; isFirst: boolean; createdAt: string }
+interface LiveSale { id: string; sessionId: string; phone: string; username: string; price: number; paid: boolean; isFirst: boolean; flagged: boolean; note: string; createdAt: string }
 interface CustGroup { phone: string; username: string; items: LiveSale[] }
 
 /* ── helpers ── */
@@ -44,7 +44,7 @@ function WaBtn({ phone }: { phone: string }) {
 }
 
 export default function LiveClient() {
-  const [tab, setTab] = useState<'live' | 'customers' | 'report'>('live')
+  const [tab, setTab] = useState<'live' | 'customers' | 'report' | 'problems'>('live')
   const [sessions, setSessions] = useState<LiveSession[]>([])
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [sales, setSales] = useState<LiveSale[]>([])
@@ -56,6 +56,9 @@ export default function LiveClient() {
   const [fPrice, setFPrice] = useState('')
   const [hint, setHint] = useState<{ text: string; good: boolean } | null>(null)
   const [adding, setAdding] = useState(false)
+
+  /* local note drafts (keyed by sale id) */
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>({})
 
   /* live tab filters */
   const [liveSearch, setLiveSearch] = useState('')
@@ -87,7 +90,7 @@ export default function LiveClient() {
   }, [fetchSessions])
   useEffect(() => { if (currentId) fetchSales(currentId) }, [currentId, fetchSales])
   useEffect(() => {
-    if (tab === 'customers' || tab === 'report') {
+    if (tab === 'customers' || tab === 'report' || tab === 'problems') {
       fetch('/api/live/sales?sessionId=ALL').then(r => r.json()).then(setAllSales)
     }
   }, [tab])
@@ -118,6 +121,19 @@ export default function LiveClient() {
     setFUser('')
     setHint(null)
     setAdding(false)
+  }
+
+  async function toggleFlag(id: string, current: boolean) {
+    const patch = { flagged: !current }
+    setSales(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
+    setAllSales(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
+    await fetch(`/api/live/sales/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
+  }
+
+  async function saveNote(id: string, note: string) {
+    setSales(prev => prev.map(s => s.id === id ? { ...s, note } : s))
+    setAllSales(prev => prev.map(s => s.id === id ? { ...s, note } : s))
+    await fetch(`/api/live/sales/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) })
   }
 
   async function togglePaid(id: string, current: boolean) {
@@ -202,7 +218,7 @@ export default function LiveClient() {
   const panelS: React.CSSProperties = { background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: 16, marginBottom: 20 }
   const cardS: React.CSSProperties = { background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, overflow: 'hidden' }
   const statCardS = (color?: string): React.CSSProperties => ({ background: '#fff', border: '1px solid #E4DFD6', borderRadius: 10, padding: '14px 16px', color: color ?? undefined })
-  const TABS = [{ key: 'live', label: 'ლაივი' }, { key: 'customers', label: 'მომხმარებლები' }, { key: 'report', label: 'რეპორტი' }] as const
+  const TABS = [{ key: 'live', label: 'ლაივი' }, { key: 'customers', label: 'მომხმარებლები' }, { key: 'report', label: 'რეპორტი' }, { key: 'problems', label: '🚩 პრობლემები' }] as const
 
   return (
     <div className="live-wrap">
@@ -336,16 +352,30 @@ export default function LiveClient() {
                       </div>
                       <div style={{ borderTop: '1px solid #E4DFD6', padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {g.items.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((it, idx) => (
-                          <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13.5, gap: 8, flexWrap: 'wrap' }}>
-                            <span>ნივთი #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ ...S, fontWeight: 600 }}>{fmt(it.price)}</span>
-                              <button onClick={() => togglePaid(it.id, it.paid)}
-                                style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 20, border: '1px solid transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', background: it.paid ? '#E4F3EE' : '#FBEEDA', color: it.paid ? '#147D6F' : '#B4791C' }}>
-                                {it.paid ? '✓ ჩარიცხულია' : 'არ არის ჩარიცხული'}
-                              </button>
-                              <button onClick={() => deleteSale(it.id)} style={{ background: 'none', border: 'none', color: '#7A7368', cursor: 'pointer', fontSize: 15, padding: '3px 5px', borderRadius: 4 }}>✕</button>
-                            </span>
+                          <div key={it.id}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13.5, gap: 8, flexWrap: 'wrap' }}>
+                              <span>ნივთი #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ ...S, fontWeight: 600 }}>{fmt(it.price)}</span>
+                                <button onClick={() => togglePaid(it.id, it.paid)}
+                                  style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 20, border: '1px solid transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', background: it.paid ? '#E4F3EE' : '#FBEEDA', color: it.paid ? '#147D6F' : '#B4791C' }}>
+                                  {it.paid ? '✓ ჩარიცხულია' : 'არ არის ჩარიცხული'}
+                                </button>
+                                <button onClick={() => toggleFlag(it.id, it.flagged)}
+                                  title={it.flagged ? 'პრობლემის მოხსნა' : 'პრობლემის მონიშვნა'}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '3px 5px', borderRadius: 4, opacity: it.flagged ? 1 : 0.3, transition: 'opacity .15s' }}>🚩</button>
+                                <button onClick={() => deleteSale(it.id)} style={{ background: 'none', border: 'none', color: '#7A7368', cursor: 'pointer', fontSize: 15, padding: '3px 5px', borderRadius: 4 }}>✕</button>
+                              </span>
+                            </div>
+                            {it.flagged && (
+                              <input
+                                style={{ marginTop: 6, width: '100%', border: '1px solid #F4C3C3', borderRadius: 6, padding: '7px 10px', background: '#FFF5F5', fontSize: 13, fontFamily: 'inherit', color: '#221F1B', boxSizing: 'border-box' }}
+                                placeholder="მაგ. 10 ₾ ნაკლები მივიღე"
+                                value={localNotes[it.id] ?? it.note}
+                                onChange={e => setLocalNotes(prev => ({ ...prev, [it.id]: e.target.value }))}
+                                onBlur={e => saveNote(it.id, e.target.value)}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -414,6 +444,63 @@ export default function LiveClient() {
           })()}
         </>
       )}
+
+      {/* ── PROBLEMS TAB ── */}
+      {tab === 'problems' && (() => {
+        const flagged = allSales
+          .filter(s => s.flagged)
+          .slice()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        if (flagged.length === 0) return (
+          <div style={{ textAlign: 'center', color: '#7A7368', padding: '60px 20px' }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>✅</div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>პრობლემური ნივთები არ არის</div>
+          </div>
+        )
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {flagged.map(it => {
+              const sess = sessions.find(s => s.id === it.sessionId)
+              return (
+                <div key={it.id} style={{ background: '#fff', border: '1.5px solid #F4C3C3', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{it.username || '(username არ მითითებულა)'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <span style={{ ...S, fontSize: 12.5, color: '#7A7368' }}>{normalizePhone(it.phone)}</span>
+                        <WaBtn phone={it.phone} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 10.5, color: '#7A7368', fontWeight: 600 }}>ფასი</div>
+                        <div style={{ ...S, fontWeight: 700, fontSize: 15 }}>{fmt(it.price)}</div>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: it.paid ? '#E4F3EE' : '#FBEEDA', color: it.paid ? '#147D6F' : '#B4791C' }}>
+                        {it.paid ? '✓ ჩარიცხულია' : 'გადაუხდელი'}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#7A7368' }}>
+                    ლაივი: <span style={{ fontWeight: 600, color: '#221F1B' }}>{sess?.label ?? 'წაშლილი ლაივი'}</span>
+                  </div>
+                  {it.note && (
+                    <div style={{ marginTop: 6, background: '#FFF5F5', border: '1px solid #F4C3C3', borderRadius: 6, padding: '7px 10px', fontSize: 13, color: '#8B2828' }}>
+                      {it.note}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button onClick={() => toggleFlag(it.id, true)}
+                      style={{ background: 'none', border: '1px solid #E4DFD6', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#7A7368', fontFamily: 'inherit' }}>
+                      პრობლემის მოხსნა
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ── REPORT TAB ── */}
       {tab === 'report' && (() => {

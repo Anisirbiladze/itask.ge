@@ -190,6 +190,8 @@ model LiveSale {
   price     Float
   paid      Boolean     @default(false)
   isFirst   Boolean     @default(false)
+  flagged   Boolean     @default(false)
+  note      String      @default("")
   createdAt DateTime    @default(now())
 }
 
