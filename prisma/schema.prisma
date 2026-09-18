@@ -173,6 +173,26 @@ model Translation {
   value String
 }
 
+model LiveSession {
+  id        String     @id @default(cuid())
+  label     String
+  dateKey   String
+  createdAt DateTime   @default(now())
+  sales     LiveSale[]
+}
+
+model LiveSale {
+  id        String      @id @default(cuid())
+  session   LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  phone     String
+  username  String
+  price     Float
+  paid      Boolean     @default(false)
+  isFirst   Boolean     @default(false)
+  createdAt DateTime    @default(now())
+}
+
 model Setting {
   id                       String  @id @default("singleton")
   handoffFlagHours         Int     @default(48)

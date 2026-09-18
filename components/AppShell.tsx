@@ -46,6 +46,7 @@ export function useApp() { return useContext(AppContext) }
 const NAV_KEYS = [
   { href: '/board',        tKey: 'nav.board',        icon: BoardIcon },
   { href: '/team',         tKey: 'nav.team',         icon: TeamIcon },
+  { href: '/live',         tKey: 'nav.live',         icon: LiveIcon },
   { href: '/reports',      tKey: 'nav.reports',      icon: ReportsIcon,      ceoOnly: true },
   { href: '/people',       tKey: 'nav.people',       icon: PeopleIcon,       ceoOnly: true },
   { href: '/settings',     tKey: 'nav.settings',     icon: SettingsIcon,     ceoOnly: true },
@@ -372,4 +373,7 @@ function PlusIcon() {
 }
 function TranslateIcon({ size }: { size: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+}
+function LiveIcon({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 000 11.4M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a13.5 13.5 0 000 17M20.5 3.5a13.5 13.5 0 010 17"/></svg>
 }

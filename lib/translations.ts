@@ -11,6 +11,7 @@ export const DEFAULT_TRANSLATIONS: Record<string, TranslationEntry> = {
   'nav.people':          { page: 'global', default: 'People' },
   'nav.settings':        { page: 'global', default: 'Settings' },
   'nav.translations':    { page: 'global', default: 'Translations' },
+  'nav.live':            { page: 'global', default: 'Live sales' },
   'nav.companies':       { page: 'global', default: 'Companies' },
   'nav.all':             { page: 'global', default: 'All' },
   'nav.signout':         { page: 'global', default: 'Sign out' },
