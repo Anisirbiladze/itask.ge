@@ -164,6 +164,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     events.push({ type: 'ASSIGNED', toValue: body.assigneeId || null })
   }
 
+  // Full edit fields — CEO only
+  if (session.role === 'CEO') {
+    if (body.title !== undefined && body.title !== task.title) updates.title = body.title
+    if (body.description !== undefined) updates.description = body.description || null
+    if (body.priority !== undefined) updates.priority = Number(body.priority)
+    if (body.companyId !== undefined) updates.companyId = body.companyId || null
+  }
+
   if (Object.keys(updates).length > 0) {
     await prisma.task.update({ where: { id }, data: updates })
   }

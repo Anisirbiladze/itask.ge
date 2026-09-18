@@ -75,7 +75,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   onClose: () => void
   onUpdated: () => void
 }) {
-  const { me } = useApp()
+  const { me, companies, users } = useApp()
   const [task, setTask] = useState<TaskDetail | null>(initialData ? buildPartialTask(initialData) : null)
   const [loading, setLoading] = useState(!initialData)
   const [histOpen, setHistOpen] = useState(false)
@@ -84,6 +84,13 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [dueReason, setDueReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editPriority, setEditPriority] = useState(2)
+  const [editAssigneeId, setEditAssigneeId] = useState<string>('')
+  const [editCompanyId, setEditCompanyId] = useState<string>('')
+  const [deleting, setDeleting] = useState(false)
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true)
@@ -118,6 +125,45 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     })
     setSaving(false)
     load(false); onUpdated()
+  }
+
+  function openEdit() {
+    if (!task) return
+    setEditTitle(task.title)
+    setEditDesc(task.description ?? '')
+    setEditPriority(task.priority)
+    setEditAssigneeId(task.assignee?.id ?? '')
+    setEditCompanyId(task.company?.id ?? '')
+    setEditing(true)
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!task) return
+    setSaving(true); setError('')
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: editTitle,
+        description: editDesc,
+        priority: editPriority,
+        assigneeId: editAssigneeId || null,
+        companyId: editCompanyId || null,
+      }),
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+    setEditing(false)
+    load(false); onUpdated()
+  }
+
+  async function deleteTask() {
+    if (!confirm('Delete this task? It will be archived.')) return
+    setDeleting(true)
+    await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    setDeleting(false)
+    onUpdated(); onClose()
   }
 
   async function changeDueDate(e: React.FormEvent) {
@@ -318,10 +364,55 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           </form>
         )}
 
+        {/* CEO edit form */}
+        {editing && me?.role === 'CEO' && (
+          <form onSubmit={saveEdit} style={{ padding: '15px 18px', borderTop: '2px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '.06em', textTransform: 'uppercase' }}>Edit task</div>
+            <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required placeholder="Title"
+              style={inpS} />
+            <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} placeholder="Description"
+              style={{ ...inpS, resize: 'vertical' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
+              <div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>Priority</div>
+                <select value={editPriority} onChange={e => setEditPriority(Number(e.target.value))} style={{ ...inpS, appearance: 'none' }}>
+                  <option value={1}>Low</option>
+                  <option value={2}>Medium</option>
+                  <option value={3}>High</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>Company</div>
+                <select value={editCompanyId} onChange={e => setEditCompanyId(e.target.value)} style={{ ...inpS, appearance: 'none' }}>
+                  <option value="">— None —</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>Assignee</div>
+              <select value={editAssigneeId} onChange={e => setEditAssigneeId(e.target.value)} style={{ ...inpS, appearance: 'none' }}>
+                <option value="">— Unassigned —</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+              </select>
+            </div>
+            {error && <p style={{ color: 'var(--stuck)', fontSize: 13.5 }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 9 }}>
+              <button type="button" onClick={() => setEditing(false)} style={actStyle}>Cancel</button>
+              <button type="submit" disabled={saving} style={{ ...actStyle, background: 'var(--ink)', color: '#fff', border: 'none', flex: 1 }}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        )}
+
         {/* Footer */}
-        <div style={{ padding: '14px 18px', display: 'flex', gap: 9 }}>
+        <div style={{ padding: '14px 18px', display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+          {me?.role === 'CEO' && !editing && (
+            <button onClick={openEdit} style={actStyle}>Edit task</button>
+          )}
           <button onClick={() => { setChangingDue(true); setNewDue(task.dueAt ? task.dueAt.slice(0, 16) : '') }} style={actStyle}>
-            Change due date
+            Change due
           </button>
           {canMarkDone && (
             <button onClick={markDone} disabled={saving} style={{ ...actStyle, background: 'var(--done)', borderColor: 'var(--done)', color: '#fff', flex: 1 }}>
@@ -333,6 +424,12 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
               await fetch(`/api/tasks/${taskId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'WORKING' }) })
               load(); onUpdated()
             }} style={actStyle}>Reopen</button>
+          )}
+          {me?.role === 'CEO' && (
+            <button onClick={deleteTask} disabled={deleting}
+              style={{ ...actStyle, flex: 'none', color: 'var(--stuck)', borderColor: 'var(--stuck)' }}>
+              {deleting ? '…' : 'Delete'}
+            </button>
           )}
         </div>
       </div>
@@ -352,6 +449,11 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
 const actStyle: React.CSSProperties = {
   flex: 1, fontSize: 14, fontWeight: 600, padding: 11, borderRadius: 9,
   border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer', minHeight: 44,
+}
+
+const inpS: React.CSSProperties = {
+  width: '100%', fontSize: 14, color: 'var(--ink)', background: 'var(--surface)',
+  border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px',
 }
 
 function eventLabel(ev: { type: string; fromValue: string | null; toValue: string | null }) {
