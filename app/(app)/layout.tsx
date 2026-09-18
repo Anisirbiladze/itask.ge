@@ -7,7 +7,7 @@ import AppShell, { type Me, type Company } from '@/components/AppShell'
 const getCachedTranslations = unstable_cache(
   () => prisma.translation.findMany(),
   ['translations'],
-  { revalidate: 60 }
+  { revalidate: 3600, tags: ['translations'] }
 )
 
 const getCachedCompanies = unstable_cache(

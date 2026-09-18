@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
@@ -23,5 +24,6 @@ export async function PUT(req: Request) {
     )
   )
 
+  revalidateTag('translations')
   return NextResponse.json({ ok: true })
 }
