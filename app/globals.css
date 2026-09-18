@@ -56,7 +56,7 @@ th,
 .sbtn,
 .st,
 label {
-  font-family: 'Noto Sans Georgian', 'Mersad', system-ui, sans-serif;
+  font-family: var(--font-noto-geo), 'Noto Sans Georgian', 'Mersad', system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: .04em;
 }

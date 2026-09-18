@@ -2,6 +2,7 @@
 import { useEffect, useState, createContext, useContext, useCallback } from 'react'
 import { DEFAULT_TRANSLATIONS } from '@/lib/translations'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { avatarColor, initials } from '@/lib/utils'
 import NewTaskModal from '@/components/NewTaskModal'
@@ -129,19 +130,16 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         {visibleNav.map(n => {
           const active = pathname.startsWith(n.href)
           return (
-            <button key={n.href}
-              onClick={() => router.push(n.href)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                background: active ? 'rgba(255,255,255,.11)' : 'none',
-                border: 0, color: active ? '#fff' : '#98A3B0',
-                fontSize: 14, fontWeight: active ? 600 : 500,
-                padding: '9px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-              }}
-            >
+            <Link key={n.href} href={n.href} style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              background: active ? 'rgba(255,255,255,.11)' : 'none',
+              color: active ? '#fff' : '#98A3B0',
+              fontSize: 14, fontWeight: active ? 600 : 500,
+              padding: '9px 10px', borderRadius: 8, textDecoration: 'none',
+            }}>
               <n.icon size={17} />
               {n.label.toUpperCase()}
-            </button>
+            </Link>
           )
         })}
 
@@ -201,10 +199,10 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         {visibleNav.slice(0, 5).map(n => {
           const active = pathname.startsWith(n.href)
           return (
-            <button key={n.href} onClick={() => router.push(n.href)} style={{ flex: 1, background: 'none', border: 0, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer', minHeight: 44 }}>
+            <Link key={n.href} href={n.href} style={{ flex: 1, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minHeight: 44, textDecoration: 'none' }}>
               <n.icon size={19} />
               {n.label.toUpperCase()}
-            </button>
+            </Link>
           )
         })}
       </nav>

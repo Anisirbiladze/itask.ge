@@ -1,7 +1,14 @@
 import { redirect } from 'next/navigation'
+import { unstable_cache } from 'next/cache'
 import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import AppShell, { type Me, type Company } from '@/components/AppShell'
+
+const getCachedTranslations = unstable_cache(
+  () => prisma.translation.findMany(),
+  ['translations'],
+  { revalidate: 60 }
+)
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -21,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }),
     prisma.user.findMany({ where: { archived: false }, orderBy: { name: 'asc' }, select: { id: true, displayName: true } }),
     prisma.userCompany.findMany(),
-    prisma.translation.findMany(),
+    getCachedTranslations(),
   ])
 
   if (!user || user.archived) redirect('/login')
