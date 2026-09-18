@@ -14,6 +14,7 @@ export default function PeopleClient({ initialUsers }: { initialUsers: User[] })
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active')
   const [loading, setLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [editUser, setEditUser] = useState<User | null>(null)
   const [tempPw, setTempPw] = useState<string | null>(null)
 
   async function load() {
@@ -81,6 +82,7 @@ export default function PeopleClient({ initialUsers }: { initialUsers: User[] })
             ) : (
               <button onClick={() => resetPassword(u.id)} style={{ background: 'none', border: 0, color: '#1C6FD0', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>Reset password</button>
             )}
+            <button onClick={() => setEditUser(u)} style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 7, padding: '5px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: 'var(--ink)', whiteSpace: 'nowrap' }}>Edit</button>
           </div>
         ))
       )}
@@ -97,6 +99,7 @@ export default function PeopleClient({ initialUsers }: { initialUsers: User[] })
       )}
 
       {addOpen && <AddPersonModal onClose={() => setAddOpen(false)} onCreated={(pw) => { setTempPw(pw); setAddOpen(false); load() }} />}
+      {editUser && <EditPersonModal user={editUser} onClose={() => setEditUser(null)} onSaved={() => { setEditUser(null); load() }} />}
     </div>
   )
 }
@@ -179,6 +182,108 @@ function AddPersonModal({ onClose, onCreated }: { onClose: () => void; onCreated
             <button type="button" onClick={onClose} style={actStyle}>Cancel</button>
             <button type="submit" disabled={saving} style={{ ...actStyle, background: 'var(--done)', borderColor: 'var(--done)', color: '#fff', opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Adding…' : 'Add person'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function EditPersonModal({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
+  const { companies } = useApp()
+  const [name, setName] = useState(user.name)
+  const [displayName, setDisplayName] = useState(user.displayName)
+  const [email, setEmail] = useState(user.email)
+  const [jobTitle, setJobTitle] = useState(user.jobTitle ?? '')
+  const [functionGroup, setFunctionGroup] = useState(user.functionGroup ?? '')
+  const [role, setRole] = useState<'CEO' | 'MEMBER'>(user.role)
+  const [companyIds, setCompanyIds] = useState<string[]>(user.companies.map(c => c.id))
+  const [saving, setSaving] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  function toggleCompany(id: string) {
+    setCompanyIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, displayName, email, jobTitle, functionGroup, role, companyIds }),
+      })
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+      onSaved()
+    } catch { setError('Network error') } finally { setSaving(false) }
+  }
+
+  async function handleArchive() {
+    setArchiving(true)
+    await fetch(`/api/users/${user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: !user.archived }),
+    })
+    setArchiving(false)
+    onSaved()
+  }
+
+  const inpStyle: React.CSSProperties = { width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(18,24,31,.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '26px 14px', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 540, overflow: 'hidden', boxShadow: '0 18px 48px rgba(18,24,31,.22)' }}>
+        <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--line-soft)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700 }}>Edit — {user.displayName}</h2>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, border: 0, background: '#F1F4F6', color: 'var(--muted)', cursor: 'pointer', fontSize: 17 }}>×</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+              <div><label style={lblStyle}>Name</label><input style={inpStyle} value={name} onChange={e => setName(e.target.value)} required /></div>
+              <div><label style={lblStyle}>Shown as</label><input style={inpStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} /></div>
+            </div>
+            <div><label style={lblStyle}>Email</label><input type="email" required style={inpStyle} value={email} onChange={e => setEmail(e.target.value)} /></div>
+            <div><label style={lblStyle}>Job title</label><input style={inpStyle} value={jobTitle} onChange={e => setJobTitle(e.target.value)} /></div>
+            <div><label style={lblStyle}>Function group</label><input style={inpStyle} value={functionGroup} onChange={e => setFunctionGroup(e.target.value)} /></div>
+            <div>
+              <label style={lblStyle}>Access level</label>
+              <select value={role} onChange={e => setRole(e.target.value as 'CEO' | 'MEMBER')} style={{ ...inpStyle, appearance: 'none' }}>
+                <option value="MEMBER">Member</option>
+                <option value="CEO">CEO</option>
+              </select>
+            </div>
+            <div>
+              <label style={lblStyle}>Companies</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {companies.map(c => (
+                  <button type="button" key={c.id} onClick={() => toggleCompany(c.id)}
+                    style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid var(--line)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: companyIds.includes(c.id) ? 'var(--ink)' : 'var(--surface)', color: companyIds.includes(c.id) ? '#fff' : 'var(--ink)' }}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {error && <p style={{ color: 'var(--stuck)', fontSize: 13.5 }}>{error}</p>}
+          </div>
+          <div style={{ padding: '14px 18px', display: 'flex', gap: 9, borderTop: '1px solid var(--line-soft)', flexWrap: 'wrap' }}>
+            <button type="button" onClick={handleArchive} disabled={archiving} style={{ ...actStyle, color: user.archived ? 'var(--done)' : 'var(--stuck)', borderColor: 'currentColor' }}>
+              {archiving ? '…' : user.archived ? 'Restore' : 'Archive'}
+            </button>
+            <button type="button" onClick={onClose} style={actStyle}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ ...actStyle, background: 'var(--done)', borderColor: 'var(--done)', color: '#fff', opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>
