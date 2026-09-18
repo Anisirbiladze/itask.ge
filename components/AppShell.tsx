@@ -75,27 +75,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
     return translations[key] ?? DEFAULT_TRANSLATIONS[key]?.default ?? key
   }, [translations])
 
-  useEffect(() => {
-    const co = activeCompany ? companies.find(c => c.id === activeCompany) : null
-    const r = document.documentElement.style
-    if (co) {
-      r.setProperty('--paper',       co.bgTint)
-      r.setProperty('--surface',     co.surfaceTint)
-      r.setProperty('--accent',      co.color)
-      r.setProperty('--accent-top',  co.accentTop)
-      r.setProperty('--accent-ink',  co.accentInk)
-      r.setProperty('--accent-text', co.accentText)
-      r.setProperty('--accent-rgb',  co.accentRgb)
-    } else {
-      r.setProperty('--paper',       '#F4F6F8')
-      r.setProperty('--surface',     '#FFFFFF')
-      r.setProperty('--accent',      '#12181F')
-      r.setProperty('--accent-top',  '#222C36')
-      r.setProperty('--accent-ink',  '#FFFFFF')
-      r.setProperty('--accent-text', '#12181F')
-      r.setProperty('--accent-rgb',  '18,24,31')
-    }
-  }, [activeCompany, companies])
+  const activeCo = activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null
+  const sidebarAccent = activeCo?.color ?? 'var(--accent)'
 
   function fetchCompanies() {
     fetch('/api/companies')
@@ -125,6 +106,13 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
         background: 'var(--surface)', borderRight: '1px solid var(--line)',
         padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 1, zIndex: 40,
+        borderTop: `3px solid ${sidebarAccent}`,
+        ['--accent' as string]: sidebarAccent,
+        ['--accent-top' as string]: activeCo?.accentTop ?? 'var(--ink)',
+        ['--accent-ink' as string]: activeCo?.accentInk ?? '#FFFFFF',
+        ['--accent-text' as string]: activeCo?.accentText ?? 'var(--ink)',
+        ['--accent-rgb' as string]: activeCo?.accentRgb ?? '8,9,11',
+        transition: 'border-top-color .3s ease',
       }} className="sidebar">
         {/* Brand / Logo slot */}
         <SidebarBrand activeCompany={activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null} />
