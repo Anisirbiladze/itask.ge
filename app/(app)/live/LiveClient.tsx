@@ -153,7 +153,7 @@ export default function LiveClient() {
     if (matches.length > 0) {
       const un = matches[0].username
       if (!fUser && un) setFUser(un)
-      setHint({ text: `ცნობილი მომხმარებელია · ${un} · სულ ${matches.length} შეძენა`, good: true })
+      setHint({ text: `ცნობილი მომხმარებელია · ${un} · სულ ${matches.length} ნივთი`, good: true })
     } else {
       setHint(null)
     }
@@ -337,7 +337,7 @@ export default function LiveClient() {
                       <div style={{ borderTop: '1px solid #E4DFD6', padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {g.items.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((it, idx) => (
                           <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13.5, gap: 8, flexWrap: 'wrap' }}>
-                            <span>შეძენა #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
+                            <span>ნივთი #{idx + 1}{it.isFirst && <span style={{ fontSize: 10.5, color: '#7A7368', marginLeft: 6 }}>1-ლი</span>}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ ...S, fontWeight: 600 }}>{fmt(it.price)}</span>
                               <button onClick={() => togglePaid(it.id, it.paid)}
@@ -389,7 +389,7 @@ export default function LiveClient() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.username || '(username არ მითითებულა)'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ ...S, fontSize: 12, color: '#7A7368' }}>{g.phone} · {g.items.length} შეძენა</span>
+                        <span style={{ ...S, fontSize: 12, color: '#7A7368' }}>{g.phone} · {g.items.length} ნივთი</span>
                         <WaBtn phone={g.phone} />
                       </div>
                     </div>
@@ -500,7 +500,7 @@ export default function LiveClient() {
                   <div style={{ display: 'flex', gap: 12, marginTop: 5, fontSize: 12.5, color: '#7A7368', flexWrap: 'wrap' }}>
                     <span style={{ ...S }}>{r.g.phone}</span>
                     <span>ლაივი <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.sessionsCount}</b></span>
-                    <span>შეძენა <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.purchases}</b></span>
+                    <span>ნივთი <b style={{ color: '#221F1B', fontFamily: 'inherit' }}>{r.purchases}</b></span>
                     <span>დარჩენილი <b style={{ color: r.t.due > 0 ? '#B4791C' : '#147D6F', ...S }}>{fmt(r.t.due)}</b></span>
                   </div>
                 </div>
