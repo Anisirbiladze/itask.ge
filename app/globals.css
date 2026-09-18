@@ -118,7 +118,8 @@ label {
 .seg-btn.on { background: var(--ink); color: #fff; box-shadow: 0 1px 3px rgba(8,9,11,.18); }
 .seg-btn:not(.on):hover { background: var(--tint); color: var(--ink-2); }
 /* stat */
-.stat-row { display: flex; gap: 28px; padding: 18px 0 14px; }
+.stat-row { display: flex; gap: 10px; padding: 18px 0 14px; flex-wrap: wrap; }
+.stat-item { background: var(--surface); border: 1.5px solid #C8CDD6; border-radius: 11px; padding: 12px 18px; box-shadow: 0 1px 3px rgba(8,9,11,.06); min-width: 80px; }
 .stat-item b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -.035em; line-height: 1; }
 .stat-item span { font-size: 11px; color: var(--ink-3); font-family: var(--font-noto-geo),'Noto Sans Georgian',sans-serif; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-top: 5px; display: block; }
 .stat-item.hot b { color: var(--stuck-2); }
