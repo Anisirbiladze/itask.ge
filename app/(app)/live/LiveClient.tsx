@@ -57,6 +57,10 @@ export default function LiveClient() {
   const [hint, setHint] = useState<{ text: string; good: boolean } | null>(null)
   const [adding, setAdding] = useState(false)
 
+  /* live tab filters */
+  const [liveSearch, setLiveSearch] = useState('')
+  const [liveFilter, setLiveFilter] = useState<'all'|'paid'|'first'|'partial'|'unpaid'>('all')
+
   /* customers tab */
   const [search, setSearch] = useState('')
 
@@ -172,8 +176,24 @@ export default function LiveClient() {
     return lb - la
   })
 
+  /* stats always reflect full session, unaffected by filter */
   let statTotal = 0, statPaid = 0
   for (const g of groups) { const t = custTotals(g.items); statTotal += t.total; statPaid += t.paid }
+
+  /* filtered groups for the card list */
+  const q = liveSearch.trim().toLowerCase()
+  const filteredGroups = groups.filter(g => {
+    if (q && !g.phone.includes(q) && !(g.username || '').toLowerCase().includes(q)) return false
+    if (liveFilter === 'all') return true
+    const t = custTotals(g.items)
+    if (liveFilter === 'paid') return t.due === 0
+    if (liveFilter === 'unpaid') return t.paid === 0
+    const first = g.items.slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]
+    const isFirstOnly = first?.paid === true && t.paid === first.price
+    if (liveFilter === 'first') return t.paid > 0 && t.due > 0 && isFirstOnly
+    if (liveFilter === 'partial') return t.paid > 0 && t.due > 0 && !isFirstOnly
+    return true
+  })
 
   /* ── shared styles ── */
   const inputS: React.CSSProperties = { width: '100%', border: '1px solid #E4DFD6', borderRadius: 7, padding: '11px 12px', background: '#F3F0EB', color: '#221F1B', fontSize: 15, fontFamily: 'inherit' }
@@ -264,12 +284,34 @@ export default function LiveClient() {
             {hint && <div style={{ marginTop: 6, fontSize: 12.5, color: hint.good ? '#147D6F' : '#C4295A', fontWeight: hint.good ? 600 : 400 }}>{hint.text}</div>}
           </div>
 
+          {/* Search + status filter */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <input
+              style={{ ...inputS, background: '#fff', flex: '1 1 200px', minWidth: 0 }}
+              placeholder="მოძებნე ნომრით ან Username-ით"
+              value={liveSearch}
+              onChange={e => setLiveSearch(e.target.value)}
+            />
+            <select
+              value={liveFilter}
+              onChange={e => setLiveFilter(e.target.value as typeof liveFilter)}
+              style={{ border: '1px solid #E4DFD6', borderRadius: 7, padding: '11px 12px', background: '#fff', color: '#221F1B', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', flex: '0 0 auto' }}>
+              <option value="all">ყველა</option>
+              <option value="paid">სრულად გადახდილი</option>
+              <option value="first">პირველი გადახდილია</option>
+              <option value="partial">ნაწილობრივ გადახდილი</option>
+              <option value="unpaid">გადაუხდელი</option>
+            </select>
+          </div>
+
           {/* Customer cards */}
           <div className="live-list-wrap">
             {groups.length === 0
               ? <div style={{ textAlign: 'center', color: '#7A7368', padding: '40px 10px', fontSize: 14 }}>ამ ლაივში ჯერ არაფერი გაყიდულა.</div>
+              : filteredGroups.length === 0
+              ? <div style={{ textAlign: 'center', color: '#7A7368', padding: '40px 10px', fontSize: 14 }}>ამ ფილტრს არ ემთხვევა არცერთი მომხმარებელი.</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {groups.map(g => {
+                {filteredGroups.map(g => {
                   const t = custTotals(g.items)
                   return (
                     <div key={g.phone} style={cardS}>
