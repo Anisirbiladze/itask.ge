@@ -255,7 +255,7 @@ export default function LiveClient() {
               </div>
               <div className="live-phone-row">
                 <input style={inputS} value={fUser} onChange={e => setFUser(e.target.value)} placeholder="ტიკტოკ Username" />
-                <input style={{ ...inputS, flex: '0 0 110px' }} type="number" min="0" step="1" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="ფასი ₾" inputMode="decimal" onKeyDown={e => e.key === 'Enter' && addSale()} />
+                <input style={inputS} type="number" min="0" step="1" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="ფასი ₾" inputMode="decimal" onKeyDown={e => e.key === 'Enter' && addSale()} />
               </div>
               <button className="live-addbtn" style={btnPrimary} onClick={addSale} disabled={adding}>
                 {adding ? '...' : 'დამატება'}
