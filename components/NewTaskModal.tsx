@@ -175,7 +175,8 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
               <div>
                 <label style={lblStyle}>{t('new_task.label_due')}</label>
                 <input type="date" value={dueAt} onChange={e => setDueAt(e.target.value)}
-                  style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
+                  onClick={e => { try { (e.target as HTMLInputElement).showPicker() } catch {} }}
+                  style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', cursor: 'pointer' }} />
               </div>
               <div>
                 <label style={lblStyle}>{t('new_task.label_priority')}</label>
