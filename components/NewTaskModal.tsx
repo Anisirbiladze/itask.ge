@@ -1,8 +1,6 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '@/components/AppShell'
-
-interface Company { id: string; name: string; color: string }
 
 function todayString() {
   const d = new Date()
@@ -12,16 +10,15 @@ function todayString() {
   return `${y}-${m}-${day}`
 }
 
-export default function NewTaskModal({ companies, defaultCompanyId, onClose, onCreated }: {
-  companies: Company[]
-  defaultCompanyId?: string
+export default function NewTaskModal({ onClose, onCreated }: {
   onClose: () => void
   onCreated: () => void
 }) {
-  const { users: allUsers, t } = useApp()
+  const { users: allUsers, companies, t } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [companyId, setCompanyId] = useState(defaultCompanyId ?? '')
+  // Auto-select the first (only) company — no picker needed
+  const companyId = companies[0]?.id ?? ''
   const [assigneeId, setAssigneeId] = useState('')
   const [dueAt, setDueAt] = useState(todayString)
   const [priority, setPriority] = useState(2)
@@ -30,10 +27,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const users = useMemo(
-    () => companyId ? allUsers.filter(u => u.companyIds.includes(companyId)) : allUsers,
-    [allUsers, companyId]
-  )
+  const users = companyId ? allUsers.filter(u => u.companyIds.includes(companyId)) : allUsers
 
   useEffect(() => {
     if (assigneeId && !users.find(u => u.id === assigneeId)) setAssigneeId('')
@@ -151,22 +145,13 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
               </div>
             )}
 
-            {/* Company + Assignee */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 6 }}>
-              <div>
-                <label style={lblStyle}>{t('new_task.label_company')}</label>
-                <select value={companyId} onChange={e => setCompanyId(e.target.value)} style={selStyle}>
-                  <option value="">{t('new_task.company_choose')}</option>
-                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lblStyle}>{t('new_task.label_assignee')}</label>
-                <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={selStyle}>
-                  <option value="">{t('new_task.assign_nobody')}</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
-                </select>
-              </div>
+            {/* Assignee (full width — company is auto-set) */}
+            <div style={{ marginBottom: 6 }}>
+              <label style={lblStyle}>{t('new_task.label_assignee')}</label>
+              <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={selStyle}>
+                <option value="">{t('new_task.assign_nobody')}</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+              </select>
             </div>
 
 

@@ -29,15 +29,13 @@ interface AppCtx {
   me: Me | null
   companies: Company[]
   users: AppUser[]
-  activeCompany: string | null
-  setActiveCompany: (id: string | null) => void
   refreshCompanies: () => void
-  openNewTask: (companyId?: string) => void
+  openNewTask: () => void
   t: (key: string) => string
 }
 export const AppContext = createContext<AppCtx>({
-  me: null, companies: [], users: [], activeCompany: null,
-  setActiveCompany: () => {}, refreshCompanies: () => {}, openNewTask: () => {},
+  me: null, companies: [], users: [],
+  refreshCompanies: () => {}, openNewTask: () => {},
   t: (key: string) => DEFAULT_TRANSLATIONS[key]?.default ?? key,
 })
 export function useApp() { return useContext(AppContext) }
@@ -65,27 +63,15 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
   const [users] = useState<AppUser[]>(initialUsers)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
-  const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
   const [translations, setTranslations] = useState<Record<string, string>>(initialTranslations)
   // Sync when server re-renders with fresh data (e.g. after router.refresh() from the Translations page)
   useEffect(() => { setTranslations(initialTranslations) }, [initialTranslations])
-
-  // activeCompany is stored in the URL as ?company=ID so it survives navigation and back
-  const activeCompany = searchParams.get('company') ?? null
-
-  function setActiveCompany(id: string | null) {
-    const params = new URLSearchParams(searchParams.toString())
-    if (id) params.set('company', id)
-    else params.delete('company')
-    router.replace(`${pathname}?${params.toString()}`)
-  }
 
   const t = useCallback((key: string): string => {
     return translations[key] ?? DEFAULT_TRANSLATIONS[key]?.default ?? key
   }, [translations])
 
-  const activeCo = activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null
-  const sbTheme = getSbTheme(activeCo)
+  const sbTheme = getSbTheme(null)
 
   function fetchCompanies() {
     fetch('/api/companies')
@@ -99,8 +85,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
     router.push('/login')
   }
 
-  function openNewTask(companyId?: string) {
-    setNewTaskCompany(companyId)
+  function openNewTask() {
     setNewTaskOpen(true)
   }
 
@@ -109,7 +94,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   const dateStr = format(new Date(), 'EEEE, d MMMM')
 
   return (
-    <AppContext.Provider value={{ me, companies, users, activeCompany, setActiveCompany, refreshCompanies: fetchCompanies, openNewTask, t }}>
+    <AppContext.Provider value={{ me, companies, users, refreshCompanies: fetchCompanies, openNewTask, t }}>
       {/* Sidebar / Rail */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sb)',
@@ -118,26 +103,20 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         transition: 'background-color .35s cubic-bezier(.22,.9,.3,1)',
       }} className="sidebar">
         {/* Brand / Logo slot */}
-        <SidebarBrand activeCompany={activeCompany ? companies.find(c => c.id === activeCompany) ?? null : null} />
+        <SidebarBrand activeCompany={null} />
 
         {/* Nav */}
         {visibleNav.map(n => {
           const active = pathname.startsWith(n.href)
-          const navHref = activeCompany ? `${n.href}?company=${activeCompany}` : n.href
           return (
-            <Link key={n.href} href={navHref} className={`nav-link${active ? ' nav-active' : ''}`}>
+            <Link key={n.href} href={n.href} className={`nav-link${active ? ' nav-active' : ''}`}>
               <n.icon size={17} />
               {n.label.toUpperCase()}
             </Link>
           )
         })}
 
-        {/* Companies filter */}
-        <div style={{ height: 1, background: 'var(--sb-line)', margin: '16px 10px 12px' }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--sb-faint)', padding: '0 10px 8px', letterSpacing: '.1em', fontFamily: 'var(--font-noto-geo)', textTransform: 'uppercase' }}>
-          {t('nav.companies')}
-        </div>
-        <CompanyFilter companies={companies} active={activeCompany} onChange={setActiveCompany} />
+
 
         {me && (
           <div style={{ marginTop: 'auto', borderTop: '1px solid var(--sb-line)', paddingTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -165,8 +144,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
           </div>
           {me?.role === 'CEO' && (
             <button
-              onClick={() => openNewTask(activeCompany ?? undefined)}
-              className={`pbtn${activeCompany && companies.find(c => c.id === activeCompany)?.accentInk === '#12181F' ? ' onlight' : ''}`}
+              onClick={() => openNewTask()}
+              className="pbtn"
             >
               <span className="lead">
                 <span className="ico"><PlusIcon /></span>
@@ -187,9 +166,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
       }} className="mobar">
         {visibleNav.slice(0, 5).map(n => {
           const active = pathname.startsWith(n.href)
-          const navHref = activeCompany ? `${n.href}?company=${activeCompany}` : n.href
           return (
-            <Link key={n.href} href={navHref} style={{ flex: 1, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minHeight: 44, textDecoration: 'none' }}>
+            <Link key={n.href} href={n.href} style={{ flex: 1, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minHeight: 44, textDecoration: 'none' }}>
               <n.icon size={19} />
               {n.label.toUpperCase()}
             </Link>
@@ -199,10 +177,8 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
 
       {newTaskOpen && (
         <NewTaskModal
-          companies={companies}
-          defaultCompanyId={newTaskCompany}
           onClose={() => setNewTaskOpen(false)}
-          onCreated={() => { setNewTaskOpen(false); fetchCompanies() }}
+          onCreated={() => { setNewTaskOpen(false) }}
         />
       )}
 

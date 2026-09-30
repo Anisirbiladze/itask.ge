@@ -57,7 +57,7 @@ export default function BoardClient({
   initialUsers: { id: string; displayName: string; photoUrl?: string | null }[]
   allTags?: { id: string; name: string; color: string }[]
 }) {
-  const { activeCompany, companies, me, openNewTask, refreshCompanies } = useApp()
+  const { companies, me, openNewTask, refreshCompanies } = useApp()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [users] = useState(initialUsers)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -66,7 +66,7 @@ export default function BoardClient({
   const searchParams = useSearchParams()
 
   // All filter state lives in the URL
-  const groupBy   = (searchParams.get('group') as 'company' | 'person') ?? 'company'
+  const groupBy   = 'person' as const
   const filter    = searchParams.get('filter') ?? (me?.role === 'MEMBER' ? 'my_tasks' : 'all')
   const tagFilter = searchParams.get('tags')?.split(',').filter(Boolean) ?? []
 
@@ -84,7 +84,6 @@ export default function BoardClient({
     p.set(key, value)
     router.replace(`/board?${p.toString()}`, { scroll: false })
   }
-  function setGroupBy(v: 'company' | 'person') { setParam('group', v) }
   function setFilter(v: string) { setParam('filter', v) }
 
   const refetch = useCallback(async () => {
@@ -117,8 +116,6 @@ export default function BoardClient({
   const filteredTasks = useMemo(() => {
     const now = new Date()
     let result = tasks
-    // company filter comes from URL ?company= handled in AppShell, but activeCompany is derived from it
-    if (activeCompany) result = result.filter(t => t.companyId === activeCompany)
     // tag filter
     if (tagFilter.length > 0) result = result.filter(t => tagFilter.every(tid => t.tags?.some(tag => tag.id === tid)))
 
@@ -149,7 +146,7 @@ export default function BoardClient({
       }
     }
     return result
-  }, [tasks, activeCompany, filter, me?.id])
+  }, [tasks, filter, me?.id])
 
   const augmented: Task[] = useMemo(() => filteredTasks.map(t => ({
     ...t,
@@ -157,32 +154,19 @@ export default function BoardClient({
     assignee: users.find(u => u.id === t.assigneeId) ?? null,
   })), [filteredTasks, companies, users])
 
-  let sections: GroupedSection[] = []
-  if (groupBy === 'company') {
-    const filterCos = activeCompany ? companies.filter(c => c.id === activeCompany) : companies
-    sections = filterCos.map(c => {
-      const ctasks = augmented.filter(t => t.companyId === c.id)
-      const openTasks = ctasks.filter(t => t.status !== 'COMPLETED')
-      return {
-        key: c.id, label: c.name, color: c.color, accentText: c.accentText,
-        tasks: ctasks,
-        openCount: openTasks.length,
-        stuckCount: openTasks.filter(t => t.computedStatus === 'WAITING' || (t.status === 'IN_PROGRESS' && t.dueAt && new Date(t.dueAt) < new Date())).length,
-      }
-    })
-  } else {
+  const sections: GroupedSection[] = (() => {
     const byPerson: Record<string, Task[]> = {}
     for (const t of augmented) {
       const uid = t.assigneeId ?? '__unassigned'
       if (!byPerson[uid]) byPerson[uid] = []
       byPerson[uid].push(t)
     }
-    const personSections: GroupedSection[] = []
+    const result: GroupedSection[] = []
     for (const u of users) {
       if (!byPerson[u.id]?.length) continue
       const ptasks = byPerson[u.id]
       const openPtasks = ptasks.filter(t => t.status !== 'COMPLETED')
-      personSections.push({
+      result.push({
         key: u.id, label: u.displayName, color: '#6B7480', accentText: 'var(--muted)',
         tasks: ptasks, openCount: openPtasks.length,
         stuckCount: openPtasks.filter(t => t.computedStatus === 'WAITING').length,
@@ -190,21 +174,17 @@ export default function BoardClient({
     }
     if (byPerson['__unassigned']?.length) {
       const ut = byPerson['__unassigned']
-      personSections.push({ key: '__unassigned', label: 'Unassigned', color: '#B4BCC5', accentText: 'var(--muted)', tasks: ut, openCount: ut.filter(t => t.status !== 'COMPLETED').length, stuckCount: 0 })
+      result.push({ key: '__unassigned', label: 'Unassigned', color: '#B4BCC5', accentText: 'var(--muted)', tasks: ut, openCount: ut.filter(t => t.status !== 'COMPLETED').length, stuckCount: 0 })
     }
-    sections = personSections
-  }
+    return result
+  })()
 
-  function handleAddTask(section: GroupedSection) {
-    if (groupBy === 'company') openNewTask(section.key)
-    else openNewTask()
+  function handleAddTask() {
+    openNewTask()
   }
 
   /* ── Stats and filter counts ──────────────────────────────────────── */
-  // Company-filtered tasks (before status filter) for computing counts
-  const companyTasks = useMemo(() =>
-    activeCompany ? tasks.filter(t => t.companyId === activeCompany) : tasks
-  , [tasks, activeCompany])
+  const companyTasks = tasks
 
   const now = new Date()
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
@@ -250,10 +230,6 @@ export default function BoardClient({
 
       {/* Filter bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="seg">
-          <button className={`seg-btn${groupBy === 'company' ? ' on' : ''}`} onClick={() => setGroupBy('company')}>კომპანია</button>
-          <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
-        </div>
         <div className="seg" style={{ flexWrap: 'wrap' }}>
           <FilterBtn label="ყველა"       active={filter === 'all'}         onClick={() => setFilter('all')} />
           {me && <FilterBtn label="ჩემი" active={filter === 'my_tasks'}    onClick={() => setFilter('my_tasks')} count={cnt.my_tasks} />}
@@ -305,7 +281,7 @@ export default function BoardClient({
           groupBy={groupBy}
           onRowClick={setSelectedTask}
           onStatusChange={changeStatus}
-          onAddTask={me?.role === 'CEO' ? () => handleAddTask(section) : undefined}
+          onAddTask={me?.role === 'CEO' ? () => handleAddTask() : undefined}
           me={me}
         />
       ))}
