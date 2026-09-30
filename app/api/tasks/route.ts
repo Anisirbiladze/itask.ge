@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const {
     title, description, companyId, assigneeId, dueAt,
-    priority, linkUrl, linkLabel, tagIds,
+    priority, linkUrl,
   } = body
 
   if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 })
@@ -116,15 +116,7 @@ export async function POST(req: NextRequest) {
   // Add link if provided
   if (linkUrl?.trim()) {
     await prisma.taskLink.create({
-      data: { taskId: task.id, url: linkUrl.trim(), label: linkLabel?.trim() || null },
-    })
-  }
-
-  // Apply tags if provided
-  if (Array.isArray(tagIds) && tagIds.length > 0) {
-    await prisma.taskTag.createMany({
-      data: tagIds.map((tagId: string) => ({ taskId: task.id, tagId })),
-      skipDuplicates: true,
+      data: { taskId: task.id, url: linkUrl.trim(), label: null },
     })
   }
 

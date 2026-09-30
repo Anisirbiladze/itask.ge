@@ -26,6 +26,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [dueAt, setDueAt] = useState(todayString)
   const [priority, setPriority] = useState(2)
   const [images, setImages] = useState<File[]>([])
+  const [linkUrl, setLinkUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -60,6 +61,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
           assigneeId: assigneeId || null,
           dueAt: dueAt || null,
           priority,
+          linkUrl: linkUrl.trim() || null,
         }),
       })
       const data = await res.json()
@@ -107,15 +109,34 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
             </div>
 
             {/* Description */}
-            <div style={{ marginBottom: 14 }}>
+            <div style={{ marginBottom: 10 }}>
               <label style={lblStyle}>Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional — the brief, in as much detail as needed"
-                style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 74, resize: 'vertical', lineHeight: 1.5 }} />
+                style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
             </div>
 
-            {/* Images */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Add image + Add link row */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'flex-start' }}>
+              {/* Image button */}
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, minHeight: 42 }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="4" width="16" height="13" rx="2"/><circle cx="7.5" cy="9" r="1.5"/><path d="M2 15l4-4 3 3 3-4 5 5"/></svg>
+                Add image
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file && images.length < 3) setImages(prev => [...prev, file])
+                  e.target.value = ''
+                }} />
+              </label>
+
+              {/* Link bar */}
+              <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
+                placeholder="Paste a link…"
+                style={{ flex: 1, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px', minHeight: 42 }} />
+            </div>
+
+            {/* Image thumbnails */}
+            {images.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
                 {images.map((f, i) => {
                   const src = URL.createObjectURL(f)
                   return (
@@ -127,19 +148,8 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
                     </div>
                   )
                 })}
-                {images.length < 3 && (
-                  <label style={{ width: 72, height: 72, borderRadius: 8, border: '1.5px dashed var(--line)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 4, color: 'var(--muted)', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
-                    <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
-                    სურათი
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                      const file = e.target.files?.[0]
-                      if (file) setImages(prev => [...prev, file])
-                      e.target.value = ''
-                    }} />
-                  </label>
-                )}
               </div>
-            </div>
+            )}
 
             {/* Company + Assignee */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 6 }}>
