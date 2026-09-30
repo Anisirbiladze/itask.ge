@@ -45,7 +45,6 @@ export function useApp() { return useContext(AppContext) }
 /* ── nav items ────────────────────────────────────────────────────── */
 const NAV_KEYS = [
   { href: '/board',        tKey: 'nav.board',        icon: BoardIcon },
-  { href: '/team',         tKey: 'nav.team',         icon: TeamIcon },
   { href: '/reports',      tKey: 'nav.reports',      icon: ReportsIcon,      ceoOnly: true },
   { href: '/people',       tKey: 'nav.people',       icon: PeopleIcon,       ceoOnly: true },
   { href: '/settings',     tKey: 'nav.settings',     icon: SettingsIcon,     ceoOnly: true },
@@ -368,9 +367,6 @@ export function TimelineBar({ pct, color }: { pct: number; color: string }) {
 /* ── Icons ────────────────────────────────────────────────────────── */
 function BoardIcon({ size }: { size: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
-}
-function TeamIcon({ size }: { size: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 5.5a3.2 3.2 0 010 5.4M17 20a6 6 0 00-1.5-4"/></svg>
 }
 function ReportsIcon({ size }: { size: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
