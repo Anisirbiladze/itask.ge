@@ -105,14 +105,14 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
             <div style={{ marginBottom: 14 }}>
               <label style={lblStyle}>{t('new_task.label_task')}</label>
               <input type="text" required value={title} onChange={e => setTitle(e.target.value)} placeholder={t('new_task.placeholder_task')}
-                style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} autoFocus />
+                style={{ width: '100%', fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} autoFocus />
             </div>
 
             {/* Description */}
             <div style={{ marginBottom: 10 }}>
               <label style={lblStyle}>{t('new_task.label_desc')}</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('new_task.placeholder_desc')}
-                style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
+                style={{ width: '100%', fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
             </div>
 
             {/* Add image + Add link row */}
@@ -131,7 +131,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
               {/* Link bar */}
               <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
                 placeholder={t('new_task.link_placeholder')}
-                style={{ flex: 1, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px', minHeight: 42 }} />
+                style={{ flex: 1, fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px', minHeight: 42 }} />
             </div>
 
             {/* Image thumbnails */}
