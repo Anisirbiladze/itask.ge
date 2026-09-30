@@ -14,7 +14,7 @@ const getCachedCompanies = unstable_cache(
 const getCachedTaskCounts = unstable_cache(
   () => prisma.task.groupBy({
     by: ['companyId'],
-    where: { archived: false, status: { not: 'DONE' }, companyId: { not: null } },
+    where: { archived: false, status: { not: 'COMPLETED' }, companyId: { not: null } },
     _count: { id: true },
   }),
   ['task-counts'],

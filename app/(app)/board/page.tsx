@@ -27,17 +27,21 @@ export default async function BoardPage() {
     settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
   }
 
-  const [tasks, users] = await Promise.all([
+  const [tasks, users, allTags] = await Promise.all([
     prisma.task.findMany({
       where,
       orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
-      include: { checklistItems: { select: { done: true } } },
+      include: {
+        checklistItems: { select: { done: true } },
+        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+      },
     }),
     prisma.user.findMany({
       where: { archived: false },
       orderBy: { name: 'asc' },
       select: { id: true, displayName: true, photoUrl: true },
     }),
+    prisma.tag.findMany({ orderBy: { name: 'asc' } }),
   ])
 
   const flagHours = settings?.handoffFlagHours ?? 48
@@ -46,7 +50,7 @@ export default async function BoardPage() {
   const enhanced: Task[] = tasks.map(t => {
     let computedStatus: string = t.status
     let waitingHours: number | null = null
-    if (t.handoffAt && t.status !== 'DONE') {
+    if (t.handoffAt && t.status !== 'COMPLETED') {
       const hours = Math.floor((now.getTime() - new Date(t.handoffAt).getTime()) / (1000 * 60 * 60))
       if (hours > flagHours) { computedStatus = 'WAITING'; waitingHours = hours }
     }
@@ -59,8 +63,9 @@ export default async function BoardPage() {
       createdAt: t.createdAt.toISOString(),
       checklistPct: total > 0 ? Math.round((done / total) * 100) : null,
       checklistTotal: total, checklistDone: done,
+      tags: (t.tags ?? []).map(tt => tt.tag),
     }
   })
 
-  return <BoardClient initialTasks={enhanced} initialUsers={users} />
+  return <BoardClient initialTasks={enhanced} initialUsers={users} allTags={allTags} />
 }

@@ -6,12 +6,14 @@ export default async function SettingsPage() {
   const session = await getSession()
   if (!session.userId) return null
 
-  const [settings, recurring, handoffs, checklists, users] = await Promise.all([
+  const [settings, recurring, handoffs, checklists, users, tags, taskTemplates] = await Promise.all([
     prisma.setting.upsert({ where: { id: 'singleton' }, update: {}, create: { id: 'singleton' } }),
     prisma.recurringTemplate.findMany({ orderBy: { id: 'asc' } }),
     prisma.handoffRule.findMany({ where: { active: true } }),
     prisma.checklistTemplate.findMany({ orderBy: { name: 'asc' } }),
     prisma.user.findMany({ where: { archived: false }, orderBy: { name: 'asc' }, select: { id: true, displayName: true } }),
+    prisma.tag.findMany({ orderBy: { name: 'asc' } }),
+    prisma.taskTemplate.findMany({ orderBy: { name: 'asc' }, include: { numericFields: { orderBy: { position: 'asc' } } } }),
   ])
 
   return (
@@ -21,6 +23,8 @@ export default async function SettingsPage() {
       initialHandoffs={handoffs}
       initialChecklists={checklists}
       initialUsers={users}
+      initialTags={tags}
+      initialTaskTemplates={taskTemplates}
     />
   )
 }

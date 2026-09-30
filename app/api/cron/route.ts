@@ -43,10 +43,29 @@ export async function POST(req: NextRequest) {
 
     const dueDate = addHours(tbilisi, t.dueOffsetHours)
 
+    // If a task template is attached, use its body as description (numeric fields left blank for assignee to fill in)
+    let description = t.description ?? null
+    let taskTagIds: string[] = []
+    if (t.taskTemplateId) {
+      const tmpl = await prisma.taskTemplate.findUnique({
+        where: { id: t.taskTemplateId },
+        include: { numericFields: { orderBy: { position: 'asc' } } },
+      })
+      if (tmpl) {
+        taskTagIds = tmpl.tagIds
+        if (tmpl.numericFields.length > 0) {
+          const fieldLines = tmpl.numericFields.map(f => `${f.label}: —`).join('\n')
+          description = (tmpl.body ? tmpl.body + '\n\n' : '') + fieldLines
+        } else {
+          description = tmpl.body || description
+        }
+      }
+    }
+
     const task = await prisma.task.create({
       data: {
         title: t.title,
-        description: t.description ?? null,
+        description,
         companyId: t.companyId,
         assigneeId: t.assigneeId ?? null,
         priority: t.priority,
@@ -57,6 +76,14 @@ export async function POST(req: NextRequest) {
         status: 'NOT_STARTED',
       },
     })
+
+    // Apply template tags
+    if (taskTagIds.length > 0) {
+      await prisma.taskTag.createMany({
+        data: taskTagIds.map((tagId: string) => ({ taskId: task.id, tagId })),
+        skipDuplicates: true,
+      })
+    }
 
     if (t.checklistTemplateId) {
       const tmpl = await prisma.checklistTemplate.findUnique({ where: { id: t.checklistTemplateId } })

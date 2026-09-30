@@ -170,7 +170,7 @@ async function main() {
       title: 'Shoot — product close-ups, new flavour angle',
       companyId: 'co-joy',
       assigneeId: 'u-luka',
-      status: 'DONE',
+      status: 'COMPLETED',
       priority: 3,
       createdById: 'u-ani',
       originalDueAt: past(3),
@@ -190,7 +190,7 @@ async function main() {
       title: 'Edit — product close-ups, new flavour angle',
       companyId: 'co-joy',
       assigneeId: 'u-hesho',
-      status: 'WORKING',
+      status: 'IN_PROGRESS',
       priority: 3,
       createdById: 'u-ani',
       originalDueAt: past(2),
@@ -219,7 +219,7 @@ async function main() {
     data: [
       { taskId: 'task-edit-closups', actorId: 'u-ani', type: 'CREATED', toValue: 'Edit — product close-ups', createdAt: past(3) },
       { taskId: 'task-edit-closups', actorId: null, type: 'HANDED_OFF', fromValue: 'task-shoot-closups', createdAt: past(3) },
-      { taskId: 'task-edit-closups', actorId: 'u-hesho', type: 'STATUS_CHANGED', fromValue: 'NOT_STARTED', toValue: 'WORKING', createdAt: past(2) },
+      { taskId: 'task-edit-closups', actorId: 'u-hesho', type: 'STATUS_CHANGED', fromValue: 'NOT_STARTED', toValue: 'IN_PROGRESS', createdAt: past(2) },
       { taskId: 'task-edit-closups', actorId: 'u-hesho', type: 'DUE_DATE_CHANGED', fromValue: past(2).toISOString(), toValue: past(1).toISOString(), reason: 'raw files incomplete', createdAt: past(2) },
       { taskId: 'task-edit-closups', actorId: 'u-hesho', type: 'DUE_DATE_CHANGED', fromValue: past(1).toISOString(), toValue: d(1).toISOString(), reason: 'waiting on colour grade', createdAt: past(1) },
     ],
@@ -229,39 +229,39 @@ async function main() {
   await prisma.task.upsert({
     where: { id: 'task-giveaway-video' },
     update: {},
-    create: { id: 'task-giveaway-video', title: 'Giveaway announcement video', companyId: 'co-joy', assigneeId: 'u-luka', status: 'WORKING', priority: 3, createdById: 'u-ani', originalDueAt: past(1), dueAt: past(1) },
+    create: { id: 'task-giveaway-video', title: 'Giveaway announcement video', companyId: 'co-joy', assigneeId: 'u-luka', status: 'IN_PROGRESS', priority: 3, createdById: 'u-ani', originalDueAt: past(1), dueAt: past(1) },
   })
   await prisma.task.upsert({
     where: { id: 'task-carrefour' },
     update: {},
-    create: { id: 'task-carrefour', title: 'Carrefour — shelf terms follow-up', companyId: 'co-joy', assigneeId: 'u-zura', status: 'WORKING', priority: 3, createdById: 'u-ani', originalDueAt: d(4), dueAt: d(4) },
+    create: { id: 'task-carrefour', title: 'Carrefour — shelf terms follow-up', companyId: 'co-joy', assigneeId: 'u-zura', status: 'IN_PROGRESS', priority: 3, createdById: 'u-ani', originalDueAt: d(4), dueAt: d(4) },
   })
   await prisma.task.upsert({
     where: { id: 'task-gldani-visit' },
     update: {},
-    create: { id: 'task-gldani-visit', title: 'Entertainment centre, Gldani — visit', companyId: 'co-joy', assigneeId: 'u-aniz', status: 'WORKING', priority: 2, createdById: 'u-ani', originalDueAt: d(0), dueAt: d(0) },
+    create: { id: 'task-gldani-visit', title: 'Entertainment centre, Gldani — visit', companyId: 'co-joy', assigneeId: 'u-aniz', status: 'IN_PROGRESS', priority: 2, createdById: 'u-ani', originalDueAt: d(0), dueAt: d(0) },
   })
   await prisma.task.upsert({
     where: { id: 'task-merch-module' },
     update: {},
-    create: { id: 'task-merch-module', title: 'Merchandising module — test pass', companyId: 'co-joy', assigneeId: 'u-ketij', status: 'WORKING', priority: 2, createdById: 'u-ani', originalDueAt: d(7), dueAt: d(7) },
+    create: { id: 'task-merch-module', title: 'Merchandising module — test pass', companyId: 'co-joy', assigneeId: 'u-ketij', status: 'IN_PROGRESS', priority: 2, createdById: 'u-ani', originalDueAt: d(7), dueAt: d(7) },
   })
   await prisma.task.upsert({
     where: { id: 'task-crack-can' },
     update: {},
-    create: { id: 'task-crack-can', title: 'Crack the Can — can drop shots', companyId: 'co-joy', assigneeId: 'u-luka', status: 'DONE', priority: 1, createdById: 'u-ani', originalDueAt: d(0), dueAt: d(0), completedAt: new Date() },
+    create: { id: 'task-crack-can', title: 'Crack the Can — can drop shots', companyId: 'co-joy', assigneeId: 'u-luka', status: 'COMPLETED', priority: 1, createdById: 'u-ani', originalDueAt: d(0), dueAt: d(0), completedAt: new Date() },
   })
 
   // Nomio tasks
   await prisma.task.upsert({
     where: { id: 'task-checkout-motion' },
     update: {},
-    create: { id: 'task-checkout-motion', title: 'Checkout screen — motion pass', companyId: 'co-nomio', assigneeId: 'u-hesho', status: 'WORKING', priority: 2, createdById: 'u-ani', originalDueAt: d(5), dueAt: d(5) },
+    create: { id: 'task-checkout-motion', title: 'Checkout screen — motion pass', companyId: 'co-nomio', assigneeId: 'u-hesho', status: 'IN_PROGRESS', priority: 2, createdById: 'u-ani', originalDueAt: d(5), dueAt: d(5) },
   })
   await prisma.task.upsert({
     where: { id: 'task-ops-handover' },
     update: {},
-    create: { id: 'task-ops-handover', title: 'Ops handover — step 2 of 6', companyId: 'co-nomio', assigneeId: 'u-ketin', status: 'WORKING', priority: 3, createdById: 'u-ani', originalDueAt: d(19), dueAt: d(19) },
+    create: { id: 'task-ops-handover', title: 'Ops handover — step 2 of 6', companyId: 'co-nomio', assigneeId: 'u-ketin', status: 'IN_PROGRESS', priority: 3, createdById: 'u-ani', originalDueAt: d(19), dueAt: d(19) },
   })
   await prisma.task.upsert({
     where: { id: 'task-airport-scene' },
@@ -271,14 +271,14 @@ async function main() {
   await prisma.task.upsert({
     where: { id: 'task-esim-guide' },
     update: {},
-    create: { id: 'task-esim-guide', title: 'eSIM install guide — screenshots', companyId: 'co-nomio', assigneeId: 'u-mariami', status: 'WORKING', priority: 1, createdById: 'u-ani', originalDueAt: d(6), dueAt: d(6) },
+    create: { id: 'task-esim-guide', title: 'eSIM install guide — screenshots', companyId: 'co-nomio', assigneeId: 'u-mariami', status: 'IN_PROGRESS', priority: 1, createdById: 'u-ani', originalDueAt: d(6), dueAt: d(6) },
   })
 
   // DGTL tasks
   await prisma.task.upsert({
     where: { id: 'task-pitch-deck' },
     update: {},
-    create: { id: 'task-pitch-deck', title: 'Pitch deck cover visuals', companyId: 'co-dgtl', assigneeId: 'u-mziko', status: 'WORKING', priority: 2, createdById: 'u-ani', originalDueAt: d(8), dueAt: d(8) },
+    create: { id: 'task-pitch-deck', title: 'Pitch deck cover visuals', companyId: 'co-dgtl', assigneeId: 'u-mziko', status: 'IN_PROGRESS', priority: 2, createdById: 'u-ani', originalDueAt: d(8), dueAt: d(8) },
   })
   await prisma.task.upsert({
     where: { id: 'task-agency-reel' },
@@ -292,6 +292,47 @@ async function main() {
   })
 
   console.log('Tasks created')
+
+  // --- Tags ---
+  const TAGS = [
+    { id: 'tag-design',    name: 'დიზაინი',   color: '#6FA4FF' },
+    { id: 'tag-tech',      name: 'ტექნიკური',  color: '#A78BFA' },
+    { id: 'tag-content',   name: 'კონტენტი',   color: '#FDB022' },
+    { id: 'tag-sales',     name: 'გაყიდვები',  color: '#12B76A' },
+    { id: 'tag-support',   name: 'მხარდაჭერა', color: '#F4556A' },
+    { id: 'tag-video',     name: 'ვიდეო',      color: '#FF8C42' },
+  ]
+  for (const t of TAGS) {
+    await prisma.tag.upsert({ where: { id: t.id }, update: {}, create: t })
+  }
+  console.log('Tags created')
+
+  // --- Task Templates ---
+  const supportTemplate = await prisma.taskTemplate.upsert({
+    where: { id: 'tmpl-support-daily' },
+    update: {},
+    create: {
+      id: 'tmpl-support-daily',
+      name: 'საფორთის ყოველდღიური ანგარიში',
+      body: 'ყოველდღიური ანგარიში — მხარდაჭერის სამსახური',
+      tagIds: ['tag-support'],
+      numericFields: {
+        create: [
+          { label: 'შემოსული მოთხოვნები', position: 0 },
+          { label: 'გადაჭრილი მოთხოვნები',  position: 1 },
+          { label: 'ღია / პროცესში',         position: 2 },
+        ],
+      },
+    },
+  })
+  console.log('Task templates created')
+
+  // Wire the support template to any matching recurring template
+  await prisma.recurringTemplate.updateMany({
+    where: { title: { contains: 'support', mode: 'insensitive' } },
+    data: { taskTemplateId: supportTemplate.id },
+  })
+
   console.log('\nSeed complete! Login credentials:')
   console.log('  Email: ani@itask.ge')
   console.log('  Password: TempPass123!')

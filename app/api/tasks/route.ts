@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
     orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
     include: {
       checklistItems: { select: { done: true } },
+      tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
     },
   })
 
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
     let computedStatus: string = t.status
     let waitingHours: number | null = null
 
-    if (t.handoffAt && t.status !== 'DONE') {
+    if (t.handoffAt && t.status !== 'COMPLETED') {
       const hours = Math.floor((now.getTime() - new Date(t.handoffAt).getTime()) / (1000 * 60 * 60))
       if (hours > flagHours) {
         computedStatus = 'WAITING'
@@ -71,12 +72,13 @@ export async function GET(req: NextRequest) {
     const done = t.checklistItems?.filter((c) => c.done).length ?? 0
     const checklistPct = total > 0 ? Math.round((done / total) * 100) : null
 
-    return { ...t, computedStatus, waitingHours, checklistPct, checklistTotal: total, checklistDone: done }
+    const tags = (t.tags ?? []).map((tt: { tag: { id: string; name: string; color: string } }) => tt.tag)
+    return { ...t, tags, computedStatus, waitingHours, checklistPct, checklistTotal: total, checklistDone: done }
   })
 
   // Filter stuck
   if (filter === 'stuck') {
-    return NextResponse.json(enhanced.filter((t) => t.computedStatus === 'WAITING' || t.status === 'WORKING'))
+    return NextResponse.json(enhanced.filter((t) => t.computedStatus === 'WAITING' || t.status === 'IN_PROGRESS'))
   }
 
   return NextResponse.json(enhanced)

@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState, createContext, useContext, useCallback } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { DEFAULT_TRANSLATIONS } from '@/lib/translations'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { avatarColor, initials } from '@/lib/utils'
@@ -62,15 +62,25 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [me] = useState<Me>(initialMe)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
   const [users] = useState<AppUser[]>(initialUsers)
-  const [activeCompany, setActiveCompany] = useState<string | null>(
-    initialCompanies.find(c => c.name.toLowerCase() === 'joy')?.id ?? null
-  )
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskCompany, setNewTaskCompany] = useState<string | undefined>()
-  const [translations] = useState<Record<string, string>>(initialTranslations)
+  const [translations, setTranslations] = useState<Record<string, string>>(initialTranslations)
+  // Sync when server re-renders with fresh data (e.g. after router.refresh() from the Translations page)
+  useEffect(() => { setTranslations(initialTranslations) }, [initialTranslations])
+
+  // activeCompany is stored in the URL as ?company=ID so it survives navigation and back
+  const activeCompany = searchParams.get('company') ?? null
+
+  function setActiveCompany(id: string | null) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (id) params.set('company', id)
+    else params.delete('company')
+    router.replace(`${pathname}?${params.toString()}`)
+  }
 
   const t = useCallback((key: string): string => {
     return translations[key] ?? DEFAULT_TRANSLATIONS[key]?.default ?? key
@@ -115,8 +125,9 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
         {/* Nav */}
         {visibleNav.map(n => {
           const active = pathname.startsWith(n.href)
+          const navHref = activeCompany ? `${n.href}?company=${activeCompany}` : n.href
           return (
-            <Link key={n.href} href={n.href} className={`nav-link${active ? ' nav-active' : ''}`}>
+            <Link key={n.href} href={navHref} className={`nav-link${active ? ' nav-active' : ''}`}>
               <n.icon size={17} />
               {n.label.toUpperCase()}
             </Link>
@@ -178,8 +189,9 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
       }} className="mobar">
         {visibleNav.slice(0, 5).map(n => {
           const active = pathname.startsWith(n.href)
+          const navHref = activeCompany ? `${n.href}?company=${activeCompany}` : n.href
           return (
-            <Link key={n.href} href={n.href} style={{ flex: 1, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minHeight: 44, textDecoration: 'none' }}>
+            <Link key={n.href} href={navHref} style={{ flex: 1, color: active ? '#fff' : '#98A3B0', fontSize: 10.5, fontWeight: 600, padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minHeight: 44, textDecoration: 'none' }}>
               <n.icon size={19} />
               {n.label.toUpperCase()}
             </Link>
@@ -314,16 +326,18 @@ export function Avatar({ name, size = 27, photoUrl }: { name: string; size?: num
 
 /* ── Status pill ──────────────────────────────────────────────────── */
 const STATUS_CLASS: Record<string, string> = {
-  NOT_STARTED: 'idle', WORKING: 'working', DONE: 'done', WAITING: 'stuck',
+  NOT_STARTED: 'idle', IN_PROGRESS: 'working', TO_REVIEW: 'review',
+  TO_APPROVE: 'approve', COMPLETED: 'done', WAITING: 'stuck',
 }
 const STATUS_LABEL: Record<string, string> = {
-  NOT_STARTED: 'Not started', WORKING: 'Working on it', DONE: 'Done',
+  NOT_STARTED: 'დაუწყებელი', IN_PROGRESS: 'მიმდინარე',
+  TO_REVIEW: 'შემოწმება', TO_APPROVE: 'დამტკიცება', COMPLETED: 'დასრულდა',
 }
 export function StatusPill({ status, waitingHours, onClick }: { status: string; waitingHours?: number | null; onClick?: () => void }) {
   const cls = STATUS_CLASS[status] ?? 'idle'
-  const label = status === 'WAITING' ? `Waiting ${waitingHours ?? 0}h` : (STATUS_LABEL[status] ?? status)
+  const label = status === 'WAITING' ? `ელოდება ${waitingHours ?? 0}სთ` : (STATUS_LABEL[status] ?? status)
   return (
-    <button className={`st ${cls}`} onClick={onClick} type="button" style={{ pointerEvents: onClick ? 'auto' : 'none' }}>
+    <button className={`st ${cls}`} onClick={onClick} type="button" style={{ cursor: onClick ? 'pointer' : 'default' }}>
       {label}
     </button>
   )

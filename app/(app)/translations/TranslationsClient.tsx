@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DEFAULT_TRANSLATIONS, PAGE_LABELS, PAGES } from '@/lib/translations'
 
 export default function TranslationsClient({ saved }: { saved: Record<string, string> }) {
+  const router = useRouter()
   const [activePage, setActivePage] = useState<string>('global')
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {}
@@ -30,6 +32,8 @@ export default function TranslationsClient({ saved }: { saved: Record<string, st
       } else {
         setSavedMsg(true)
         setTimeout(() => setSavedMsg(false), 2500)
+        // Re-fetch server components so AppShell picks up the new translations
+        router.refresh()
       }
     } catch (e) {
       setSaveError('Network error — could not reach server')

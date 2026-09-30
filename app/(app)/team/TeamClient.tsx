@@ -102,7 +102,7 @@ function PersonRow({ user, isOpen, onToggle }: { user: TeamUser; isOpen: boolean
           {user.tasks.map(t => (
             <div key={t.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 14 }}>
               {t.company && <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 5, color: '#fff', background: t.company.color }}>{t.company.name}</span>}
-              <span style={{ color: t.status === 'DONE' ? 'var(--muted)' : undefined, textDecoration: t.status === 'DONE' ? 'line-through' : undefined }}>{t.title}</span>
+              <span style={{ color: t.status === 'COMPLETED' ? 'var(--muted)' : undefined, textDecoration: t.status === 'COMPLETED' ? 'line-through' : undefined }}>{t.title}</span>
               <StatusPill status={t.computedStatus} waitingHours={t.waitingHours} />
             </div>
           ))}

@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Avatar, StatusPill } from '@/components/AppShell'
+import { useEffect, useRef, useState } from 'react'
+import { Avatar } from '@/components/AppShell'
 import { formatDateFull, formatDatetime } from '@/lib/utils'
 import { useApp } from '@/components/AppShell'
 
@@ -30,6 +30,7 @@ interface TaskDetail {
   checklistItems: { id: string; label: string; done: boolean; position: number }[]
   images: { id: string; url: string }[]
   links: { id: string; url: string; label: string | null }[]
+  tags: { id: string; name: string; color: string }[]
   events: {
     id: string; type: string; fromValue: string | null; toValue: string | null
     reason: string | null; createdAt: string; actorName: string | null
@@ -64,6 +65,7 @@ function buildPartialTask(d: Record<string, unknown>): TaskDetail {
     checklistItems: [],
     images: [],
     links: [],
+    tags: (d.tags as TaskDetail['tags']) ?? [],
     events: [],
     settings: { requireReasonOnDueChange: false, checklistDrivesProgress: false },
   }
@@ -91,6 +93,12 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [editAssigneeId, setEditAssigneeId] = useState<string>('')
   const [editCompanyId, setEditCompanyId] = useState<string>('')
   const [deleting, setDeleting] = useState(false)
+  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([])
+  const [tagPickerOpen, setTagPickerOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/tags').then(r => r.json()).then(setAllTags).catch(() => {})
+  }, [])
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true)
@@ -116,14 +124,15 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     load(false); onUpdated()
   }
 
-  async function markDone() {
+  async function changeStatus(newStatus: string) {
     setSaving(true)
-    await fetch(`/api/tasks/${taskId}`, {
+    const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'DONE' }),
+      body: JSON.stringify({ status: newStatus }),
     })
     setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
     load(false); onUpdated()
   }
 
@@ -192,8 +201,10 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
   const datesMatch = task.originalDueAt === task.dueAt ||
     (task.originalDueAt && task.dueAt && new Date(task.originalDueAt).toISOString() === new Date(task.dueAt).toISOString())
-  const canMarkDone = task.computedStatus !== 'DONE'
   const canChangeDue = me?.role === 'CEO' || true // checked server-side
+  const memberStatuses = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW']
+  const ceoStatuses    = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW', 'TO_APPROVE', 'COMPLETED']
+  const availableStatuses = me?.role === 'CEO' ? ceoStatuses : memberStatuses
 
   return (
     <Overlay onClose={onClose}>
@@ -209,7 +220,13 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           </div>
           <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3, paddingRight: 36 }}>{task.title}</h2>
           <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-            <StatusPill status={task.computedStatus} waitingHours={task.waitingHours} />
+            <StatusPicker
+              currentStatus={task.computedStatus}
+              waitingHours={task.waitingHours}
+              availableStatuses={availableStatuses}
+              onChange={changeStatus}
+              saving={saving}
+            />
             {task.assignee && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Avatar name={task.assignee.displayName} size={27} />
@@ -231,6 +248,46 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
             </button>
           </div>
         )}
+
+        {/* Tags row */}
+        <div style={{ padding: '11px 18px', borderBottom: '1px solid var(--line-soft)', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          {(task.tags ?? []).map(tag => (
+            <TagPill key={tag.id} tag={tag} onRemove={async () => {
+              const next = (task.tags ?? []).filter(t => t.id !== tag.id)
+              setTask(prev => prev ? { ...prev, tags: next } : prev)
+              await fetch(`/api/tasks/${taskId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tagIds: next.map(t => t.id) }),
+              })
+            }} />
+          ))}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setTagPickerOpen(o => !o)}
+              style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: '1px dashed var(--line)', borderRadius: 999, padding: '3px 10px', cursor: 'pointer' }}>
+              + ტეგი
+            </button>
+            {tagPickerOpen && allTags.length > 0 && (
+              <TagDropdown
+                allTags={allTags}
+                currentTagIds={(task.tags ?? []).map(t => t.id)}
+                onToggle={async (tagId) => {
+                  const cur = (task.tags ?? []).map(t => t.id)
+                  const next = cur.includes(tagId) ? cur.filter(id => id !== tagId) : [...cur, tagId]
+                  const nextTags = allTags.filter(t => next.includes(t.id))
+                  setTask(prev => prev ? { ...prev, tags: nextTags } : prev)
+                  await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tagIds: next }),
+                  })
+                }}
+                onClose={() => setTagPickerOpen(false)}
+              />
+            )}
+          </div>
+        </div>
 
         {/* Dates row */}
         <div style={{ padding: '15px 18px', borderBottom: '1px solid var(--line-soft)' }}>
@@ -414,17 +471,6 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           <button onClick={() => { setChangingDue(true); setNewDue(task.dueAt ? task.dueAt.slice(0, 16) : '') }} style={actStyle}>
             {t('task.btn_change_due')}
           </button>
-          {canMarkDone && (
-            <button onClick={markDone} disabled={saving} style={{ ...actStyle, background: 'var(--done)', borderColor: 'var(--done)', color: '#fff', flex: 1 }}>
-              {saving ? t('task.saving') : t('task.btn_mark_done')}
-            </button>
-          )}
-          {!canMarkDone && (
-            <button onClick={async () => {
-              await fetch(`/api/tasks/${taskId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'WORKING' }) })
-              load(); onUpdated()
-            }} style={actStyle}>{t('task.btn_reopen')}</button>
-          )}
           {me?.role === 'CEO' && (
             <button onClick={deleteTask} disabled={deleting}
               style={{ ...actStyle, flex: 'none', color: 'var(--stuck)', borderColor: 'var(--stuck)' }}>
@@ -469,6 +515,124 @@ function eventLabel(ev: { type: string; fromValue: string | null; toValue: strin
 }
 
 function statusLabel(s: string | null) {
-  const m: Record<string, string> = { NOT_STARTED: 'Not started', WORKING: 'Working', DONE: 'Done' }
+  const m: Record<string, string> = {
+    NOT_STARTED: 'Not started', IN_PROGRESS: 'In progress',
+    TO_REVIEW: 'To review', TO_APPROVE: 'To approve', COMPLETED: 'Completed',
+  }
   return m[s ?? ''] ?? s ?? '?'
+}
+
+/* ── Tag pill ──────────────────────────────────────────────────────── */
+function TagPill({ tag, onRemove }: { tag: { id: string; name: string; color: string }; onRemove?: () => void }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+      background: `${tag.color}22`, color: tag.color, border: `1px solid ${tag.color}55`,
+      fontFamily: 'var(--font-noto-geo),"Noto Sans Georgian",sans-serif',
+    }}>
+      {tag.name}
+      {onRemove && (
+        <button onClick={onRemove} style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', fontSize: 13, opacity: 0.7 }}>×</button>
+      )}
+    </span>
+  )
+}
+
+/* ── Tag dropdown ──────────────────────────────────────────────────── */
+function TagDropdown({ allTags, currentTagIds, onToggle, onClose }: {
+  allTags: { id: string; name: string; color: string }[]
+  currentTagIds: string[]
+  onToggle: (tagId: string) => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [onClose])
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 210,
+      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11,
+      boxShadow: '0 8px 28px rgba(18,24,31,.16)', padding: 5, minWidth: 180,
+      animation: 'menu-in .15s var(--ease)',
+    }}>
+      {allTags.map(tag => {
+        const selected = currentTagIds.includes(tag.id)
+        return (
+          <button key={tag.id} onClick={() => onToggle(tag.id)} className="st-opt">
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: tag.color, flexShrink: 0 }} />
+            {tag.name}
+            {selected && <span style={{ marginLeft: 'auto', fontSize: 13, color: tag.color }}>✓</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Status picker for modal ──────────────────────────────────────── */
+const ST_MODAL: Record<string, { label: string; dot: string; bg: string }> = {
+  NOT_STARTED: { label: 'დაუწყებელი', dot: '#B6BDC7', bg: 'linear-gradient(180deg,#C2CAD2,#AAB3BD)' },
+  IN_PROGRESS: { label: 'მიმდინარე',  dot: '#FDB022', bg: 'linear-gradient(180deg,#EDB335,#D49517)' },
+  TO_REVIEW:   { label: 'შემოწმება',  dot: '#6FA4FF', bg: 'linear-gradient(180deg,#6FA4FF,#4C86F0)' },
+  TO_APPROVE:  { label: 'დამტკიცება', dot: '#A78BFA', bg: 'linear-gradient(180deg,#A78BFA,#7C4DEE)' },
+  COMPLETED:   { label: 'დასრულდა',   dot: '#12B76A', bg: 'linear-gradient(180deg,#3BB275,#2B9159)' },
+  WAITING:     { label: 'გაჭედილი',   dot: '#F4556A', bg: 'linear-gradient(180deg,#E85B4C,#CE4034)' },
+}
+
+function StatusPicker({ currentStatus, waitingHours, availableStatuses, onChange, saving }: {
+  currentStatus: string
+  waitingHours: number | null
+  availableStatuses: string[]
+  onChange: (s: string) => void
+  saving: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const meta = ST_MODAL[currentStatus] ?? ST_MODAL.NOT_STARTED
+  const label = currentStatus === 'WAITING' ? `ელოდება ${waitingHours ?? 0}სთ` : meta.label
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div style={{ position: 'relative' }} ref={ref}>
+      <button
+        onClick={() => !saving && setOpen(o => !o)}
+        className={`st ${Object.keys(ST_MODAL).find(k => k === currentStatus) ? { NOT_STARTED: 'idle', IN_PROGRESS: 'working', TO_REVIEW: 'review', TO_APPROVE: 'approve', COMPLETED: 'done', WAITING: 'stuck' }[currentStatus as keyof typeof ST_MODAL] : 'idle'}`}
+        style={{ cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
+        type="button"
+        disabled={saving}
+      >
+        {label}
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 7px)', left: 0, zIndex: 200,
+          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11,
+          boxShadow: '0 8px 28px rgba(18,24,31,.16)', padding: 5, minWidth: 200,
+          animation: 'menu-in .15s var(--ease)',
+        }}>
+          {availableStatuses.map(s => {
+            const m = ST_MODAL[s]
+            return (
+              <button key={s} onClick={() => { onChange(s); setOpen(false) }} className="st-opt">
+                <span className="st-opt-dot" style={{ background: m.dot }} />
+                {m.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }

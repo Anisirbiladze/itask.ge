@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   })
 
   // Open tasks now
-  const openWhere: Record<string, unknown> = { archived: false, status: { not: 'DONE' } }
+  const openWhere: Record<string, unknown> = { archived: false, status: { not: 'COMPLETED' } }
   if (companyId) openWhere.companyId = companyId
   const openTasks = await prisma.task.findMany({
     where: openWhere,

@@ -13,15 +13,19 @@ interface RecurringTemplate { id: string; title: string; companyId: string; assi
 interface HandoffRule { id: string; companyId: string; fromTitlePattern: string; fromAssigneeId: string; toAssigneeId: string; newTitlePrefix: string; dueAfterHours: number; active: boolean }
 interface ChecklistTemplate { id: string; name: string; companyId: string | null; items: string[] }
 interface User { id: string; displayName: string }
+interface TagItem { id: string; name: string; color: string }
+interface TaskTemplateItem { id: string; name: string; body: string; numericFields: { id: string; label: string; position: number }[] }
 
 const FREQ_LABELS: Record<string, string> = { WEEKDAYS: 'Every weekday', WEEKLY: 'Weekly', TWICE_WEEKLY: 'Twice weekly' }
 
-export default function SettingsClient({ initialSettings, initialRecurring, initialHandoffs, initialChecklists, initialUsers }: {
+export default function SettingsClient({ initialSettings, initialRecurring, initialHandoffs, initialChecklists, initialUsers, initialTags = [], initialTaskTemplates = [] }: {
   initialSettings: Setting
   initialRecurring: RecurringTemplate[]
   initialHandoffs: HandoffRule[]
   initialChecklists: ChecklistTemplate[]
   initialUsers: User[]
+  initialTags?: TagItem[]
+  initialTaskTemplates?: TaskTemplateItem[]
 }) {
   const { companies } = useApp()
   const [settings, setSettings] = useState<Setting>(initialSettings)
@@ -29,10 +33,28 @@ export default function SettingsClient({ initialSettings, initialRecurring, init
   const [handoffs, setHandoffs] = useState<HandoffRule[]>(initialHandoffs)
   const [checklists] = useState<ChecklistTemplate[]>(initialChecklists)
   const [users] = useState<User[]>(initialUsers)
+  const [tags, setTags] = useState<TagItem[]>(initialTags)
+  const [taskTemplates] = useState<TaskTemplateItem[]>(initialTaskTemplates)
   const [addCompanyOpen, setAddCompanyOpen] = useState(false)
   const [newCoName, setNewCoName] = useState('')
   const [newCoColor, setNewCoColor] = useState('#5B4BC4')
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagColor, setNewTagColor] = useState('#6FA4FF')
+  const [addTagOpen, setAddTagOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  async function addTag(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    const res = await fetch('/api/tags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newTagName, color: newTagColor }) })
+    if (res.ok) { const t = await res.json(); setTags(prev => [...prev, t]) }
+    setAddTagOpen(false); setNewTagName(''); setSaving(false)
+  }
+
+  async function deleteTag(id: string) {
+    await fetch('/api/tags', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setTags(prev => prev.filter(t => t.id !== id))
+  }
 
   async function toggleSetting(key: keyof Setting, value: boolean | number) {
     const updated = { ...settings, [key]: value }
@@ -115,6 +137,53 @@ export default function SettingsClient({ initialSettings, initialRecurring, init
             </div>
           )
         })}
+      </Panel>
+
+      <Panel title="ტეგები" desc="Holding-wide tags. Appear as colour chips on tasks and in the filter bar.">
+        {tags.map(tag => (
+          <div key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 14 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: tag.color, flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>{tag.name}</span>
+            <span style={{ fontSize: 12.5, color: 'var(--muted)', fontFamily: 'monospace' }}>{tag.color}</span>
+            <button onClick={() => deleteTag(tag.id)} style={{ fontSize: 12, color: 'var(--stuck)', background: 'none', border: 0, cursor: 'pointer', padding: '2px 6px' }}>Delete</button>
+          </div>
+        ))}
+        <div style={{ paddingTop: 12 }}>
+          {!addTagOpen ? (
+            <button onClick={() => setAddTagOpen(true)} style={{ fontSize: 13.5, color: 'var(--muted)', border: '1px dashed var(--line)', background: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', minHeight: 44 }}>
+              + Add tag
+            </button>
+          ) : (
+            <form onSubmit={addTag} style={{ display: 'flex', gap: 9, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div>
+                <label style={lblStyle}>Name</label>
+                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} required placeholder="Tag name"
+                  style={{ fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px' }} />
+              </div>
+              <div>
+                <label style={lblStyle}>Colour</label>
+                <input type="color" value={newTagColor} onChange={e => setNewTagColor(e.target.value)}
+                  style={{ height: 40, width: 48, borderRadius: 9, border: '1px solid var(--line)', cursor: 'pointer', padding: 2 }} />
+              </div>
+              <button type="submit" disabled={saving} style={{ background: 'var(--ink)', color: '#fff', border: 0, borderRadius: 9, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>
+                {saving ? 'Adding…' : 'Add'}
+              </button>
+              <button type="button" onClick={() => setAddTagOpen(false)} style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 14px', fontSize: 14, cursor: 'pointer', minHeight: 44 }}>Cancel</button>
+            </form>
+          )}
+        </div>
+      </Panel>
+
+      <Panel title="Task templates" desc="Pre-fill description and structured fields when creating a task.">
+        {taskTemplates.map(tmpl => (
+          <div key={tmpl.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 14 }}>
+            <span style={{ fontWeight: 600 }}>{tmpl.name}</span>
+            {tmpl.numericFields.length > 0 && (
+              <span style={{ fontSize: 12.5, color: 'var(--muted)', marginLeft: 9 }}>{tmpl.numericFields.length} numeric field{tmpl.numericFields.length !== 1 ? 's' : ''}: {tmpl.numericFields.map(f => f.label).join(', ')}</span>
+            )}
+          </div>
+        ))}
+        {taskTemplates.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)' }}>No templates yet.</p>}
       </Panel>
 
       <Panel title="Companies" desc="Adding one takes a minute and needs no developer work.">

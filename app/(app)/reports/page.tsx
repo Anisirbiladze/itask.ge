@@ -15,7 +15,7 @@ export default async function ReportsPage() {
   const [completedTasks, pushEvents, openTasks, users, companies] = await Promise.all([
     prisma.task.findMany({ where: { archived: false, completedAt: { gte: from, lte: now } }, select: { id: true, assigneeId: true, companyId: true, completedAt: true, originalDueAt: true, dueAt: true } }),
     prisma.taskEvent.findMany({ where: { type: 'DUE_DATE_CHANGED', createdAt: { gte: from, lte: now } }, select: { taskId: true, actorId: true, createdAt: true } }),
-    prisma.task.findMany({ where: { archived: false, status: { not: 'DONE' } }, select: { id: true, assigneeId: true, companyId: true } }),
+    prisma.task.findMany({ where: { archived: false, status: { not: 'COMPLETED' } }, select: { id: true, assigneeId: true, companyId: true } }),
     prisma.user.findMany({ where: { archived: false }, select: { id: true, displayName: true } }),
     prisma.company.findMany({ where: { archived: false }, select: { id: true, name: true, color: true } }),
   ])

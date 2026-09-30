@@ -17,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         checklistItems: { orderBy: { position: 'asc' } },
         images: true,
         links: true,
+        tags: { include: { tag: true } },
       },
     }),
     prisma.taskEvent.findMany({ where: { taskId: id }, orderBy: { createdAt: 'asc' } }),
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   let computedStatus: string = task.status
   let waitingHours: number | null = null
-  if (task.handoffAt && task.status !== 'DONE') {
+  if (task.handoffAt && task.status !== 'COMPLETED') {
     const hours = Math.floor((now.getTime() - new Date(task.handoffAt).getTime()) / (1000 * 60 * 60))
     if (hours > flagHours) {
       computedStatus = 'WAITING'
@@ -65,6 +66,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     ...task,
+    tags: (task.tags ?? []).map((tt: { tag: { id: string; name: string; color: string } }) => tt.tag),
     computedStatus,
     waitingHours,
     checklistPct,
@@ -94,18 +96,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Status change
   if (body.status !== undefined && body.status !== task.status) {
+    const restrictedStatuses = ['TO_APPROVE', 'COMPLETED']
+    if (restrictedStatuses.includes(body.status) && session.role !== 'CEO') {
+      return NextResponse.json({ error: 'Only CEOs can set this status' }, { status: 403 })
+    }
     const from = task.status
     const to = body.status
     updates.status = to
-    if (to === 'WORKING' && !task.startedAt) updates.startedAt = new Date()
-    if (to === 'DONE') {
+    if (to === 'IN_PROGRESS' && !task.startedAt) updates.startedAt = new Date()
+    if (to === 'COMPLETED') {
       updates.completedAt = new Date()
       // Check handoff rules
       await checkHandoffRules(task, session.userId)
     }
-    if (from === 'DONE' && to !== 'DONE') updates.completedAt = null
+    if (from === 'COMPLETED' && to !== 'COMPLETED') updates.completedAt = null
     events.push({ type: 'STATUS_CHANGED', fromValue: from, toValue: to })
-    if (to === 'DONE') events.push({ type: 'COMPLETED' })
+    if (to === 'COMPLETED') events.push({ type: 'COMPLETED' })
   }
 
   // Due date change
@@ -144,16 +150,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const items = await prisma.checklistItem.findMany({ where: { taskId: id } })
       const allDone = items.length > 0 && items.every(i => i.done)
       const anyDone = items.some(i => i.done)
-      if (allDone && task.status !== 'DONE') {
-        updates.status = 'DONE'
+      if (allDone && task.status !== 'COMPLETED') {
+        updates.status = 'COMPLETED'
         updates.completedAt = new Date()
-        events.push({ type: 'STATUS_CHANGED', fromValue: task.status, toValue: 'DONE' })
+        events.push({ type: 'STATUS_CHANGED', fromValue: task.status, toValue: 'COMPLETED' })
         events.push({ type: 'COMPLETED' })
         await checkHandoffRules(task, session.userId)
       } else if (anyDone && task.status === 'NOT_STARTED') {
-        updates.status = 'WORKING'
+        updates.status = 'IN_PROGRESS'
         updates.startedAt = new Date()
-        events.push({ type: 'STATUS_CHANGED', fromValue: task.status, toValue: 'WORKING' })
+        events.push({ type: 'STATUS_CHANGED', fromValue: task.status, toValue: 'IN_PROGRESS' })
       }
     }
   }
@@ -170,6 +176,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.description !== undefined) updates.description = body.description || null
     if (body.priority !== undefined) updates.priority = Number(body.priority)
     if (body.companyId !== undefined) updates.companyId = body.companyId || null
+  }
+
+  // Tag assignment (any authenticated user can tag)
+  if (Array.isArray(body.tagIds)) {
+    await prisma.taskTag.deleteMany({ where: { taskId: id } })
+    if (body.tagIds.length > 0) {
+      await prisma.taskTag.createMany({
+        data: body.tagIds.map((tagId: string) => ({ taskId: id, tagId })),
+        skipDuplicates: true,
+      })
+    }
   }
 
   if (Object.keys(updates).length > 0) {

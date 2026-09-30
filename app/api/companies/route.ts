@@ -14,7 +14,7 @@ export async function GET() {
   // Add open task counts
   const counts = await prisma.task.groupBy({
     by: ['companyId'],
-    where: { archived: false, status: { not: 'DONE' }, companyId: { not: null } },
+    where: { archived: false, status: { not: 'COMPLETED' }, companyId: { not: null } },
     _count: { id: true },
   })
   const countMap = Object.fromEntries(counts.map(c => [c.companyId!, c._count.id]))
