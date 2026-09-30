@@ -25,8 +25,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [assigneeId, setAssigneeId] = useState('')
   const [dueAt, setDueAt] = useState(todayString)
   const [priority, setPriority] = useState(2)
-  const [linkUrl, setLinkUrl] = useState('')
-  const [linkLabel, setLinkLabel] = useState('')
+  const [images, setImages] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -61,12 +60,19 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
           assigneeId: assigneeId || null,
           dueAt: dueAt || null,
           priority,
-          linkUrl: linkUrl.trim() || null,
-          linkLabel: linkLabel.trim() || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to create task'); return }
+
+      // Upload any staged images
+      for (const file of images) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('taskId', data.id)
+        await fetch('/api/upload', { method: 'POST', body: fd })
+      }
+
       onCreated()
     } catch {
       setError('Network error. Please try again.')
@@ -107,14 +113,31 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
                 style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 74, resize: 'vertical', lineHeight: 1.5 }} />
             </div>
 
-            {/* Link */}
+            {/* Images */}
             <div style={{ marginBottom: 14 }}>
-              <label style={lblStyle}>Add link</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
-                <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…"
-                  style={{ fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px' }} />
-                <input type="text" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (optional)"
-                  style={{ fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px' }} />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {images.map((f, i) => {
+                  const src = URL.createObjectURL(f)
+                  return (
+                    <div key={i} style={{ position: 'relative', width: 72, height: 72 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />
+                      <button type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: 'var(--stuck)', color: '#fff', border: 0, cursor: 'pointer', fontSize: 12, lineHeight: '20px', textAlign: 'center', padding: 0 }}>×</button>
+                    </div>
+                  )
+                })}
+                {images.length < 3 && (
+                  <label style={{ width: 72, height: 72, borderRadius: 8, border: '1.5px dashed var(--line)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: 4, color: 'var(--muted)', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+                    <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
+                    სურათი
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) setImages(prev => [...prev, file])
+                      e.target.value = ''
+                    }} />
+                  </label>
+                )}
               </div>
             </div>
 
