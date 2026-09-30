@@ -13,15 +13,13 @@ export async function PUT(req: Request) {
 
   try {
     const updates: { key: string; page: string; value: string }[] = await req.json()
-
-    // Run upserts sequentially to avoid connection pool exhaustion
-    for (const u of updates) {
-      await prisma.translation.upsert({
-        where: { key: u.key },
-        update: { value: u.value },
-        create: { key: u.key, page: u.page, value: u.value },
-      })
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return NextResponse.json({ ok: true })
     }
+
+    // Delete all + bulk-insert is a single round-trip each, far faster than N upserts
+    await prisma.translation.deleteMany()
+    await prisma.translation.createMany({ data: updates })
 
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
