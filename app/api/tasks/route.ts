@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const {
     title, description, companyId, assigneeId, dueAt,
-    priority, checklistTemplateId, linkUrl, linkLabel,
+    priority, linkUrl, linkLabel, tagIds,
   } = body
 
   if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 })
@@ -113,14 +113,19 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Copy checklist template if provided
-  if (checklistTemplateId) {
-    const tmpl = await prisma.checklistTemplate.findUnique({ where: { id: checklistTemplateId } })
-    if (tmpl) {
-      await prisma.checklistItem.createMany({
-        data: tmpl.items.map((label, i) => ({ taskId: task.id, label, position: i, done: false })),
-      })
-    }
+  // Add link if provided
+  if (linkUrl?.trim()) {
+    await prisma.taskLink.create({
+      data: { taskId: task.id, url: linkUrl.trim(), label: linkLabel?.trim() || null },
+    })
+  }
+
+  // Apply tags if provided
+  if (Array.isArray(tagIds) && tagIds.length > 0) {
+    await prisma.taskTag.createMany({
+      data: tagIds.map((tagId: string) => ({ taskId: task.id, tagId })),
+      skipDuplicates: true,
+    })
   }
 
   // Log CREATED event

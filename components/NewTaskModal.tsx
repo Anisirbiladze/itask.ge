@@ -3,12 +3,13 @@ import { useEffect, useState, useMemo } from 'react'
 import { useApp } from '@/components/AppShell'
 
 interface Company { id: string; name: string; color: string }
-interface TaskTemplate {
-  id: string
-  name: string
-  body: string
-  tagIds: string[]
-  numericFields: { id: string; label: string; position: number }[]
+
+function todayString() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export default function NewTaskModal({ companies, defaultCompanyId, onClose, onCreated }: {
@@ -22,13 +23,10 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   const [description, setDescription] = useState('')
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? '')
   const [assigneeId, setAssigneeId] = useState('')
-  const [dueAt, setDueAt] = useState('')
+  const [dueAt, setDueAt] = useState(todayString)
   const [priority, setPriority] = useState(2)
-  const [checklistTemplateId, setChecklistTemplateId] = useState('')
-  const [checklistTemplates, setChecklistTemplates] = useState<{ id: string; name: string; items: string[] }[]>([])
-  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([])
-  const [taskTemplateId, setTaskTemplateId] = useState('')
-  const [numericValues, setNumericValues] = useState<Record<string, string>>({})
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkLabel, setLinkLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,23 +40,6 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   }, [users, assigneeId])
 
   useEffect(() => {
-    fetch('/api/checklist-templates').then(r => r.json()).then(setChecklistTemplates).catch(() => {})
-    fetch('/api/task-templates').then(r => r.json()).then(setTaskTemplates).catch(() => {})
-  }, [])
-
-  const activeTemplate = taskTemplates.find(t => t.id === taskTemplateId) ?? null
-
-  // When template is chosen, pre-fill description and reset numeric fields
-  function applyTemplate(tmplId: string) {
-    setTaskTemplateId(tmplId)
-    const tmpl = taskTemplates.find(t => t.id === tmplId)
-    if (tmpl) {
-      if (!description) setDescription(tmpl.body)
-      setNumericValues({})
-    }
-  }
-
-  useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -70,28 +51,18 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
     setSaving(true)
     setError('')
     try {
-      // If template has numeric fields, append them to description
-      let finalDescription = description.trim() || null
-      if (activeTemplate?.numericFields?.length) {
-        const fieldLines = activeTemplate.numericFields.map(f =>
-          `${f.label}: ${numericValues[f.id] ?? '—'}`
-        ).join('\n')
-        finalDescription = (finalDescription ? finalDescription + '\n\n' : '') + fieldLines
-      }
-
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
-          description: finalDescription,
+          description: description.trim() || null,
           companyId: companyId || null,
           assigneeId: assigneeId || null,
           dueAt: dueAt || null,
           priority,
-          checklistTemplateId: checklistTemplateId || null,
-          taskTemplateId: taskTemplateId || null,
-          tagIds: activeTemplate?.tagIds ?? [],
+          linkUrl: linkUrl.trim() || null,
+          linkLabel: linkLabel.trim() || null,
         }),
       })
       const data = await res.json()
@@ -136,6 +107,17 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
                 style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 74, resize: 'vertical', lineHeight: 1.5 }} />
             </div>
 
+            {/* Link */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={lblStyle}>Add link</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+                <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…"
+                  style={{ fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px' }} />
+                <input type="text" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (optional)"
+                  style={{ fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px' }} />
+              </div>
+            </div>
+
             {/* Company + Assignee */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 6 }}>
               <div>
@@ -173,50 +155,6 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
                 </select>
               </div>
             </div>
-
-            {/* Task template picker */}
-            {taskTemplates.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={lblStyle}>შაბლონი</label>
-                <select value={taskTemplateId} onChange={e => applyTemplate(e.target.value)} style={selStyle}>
-                  <option value="">შაბლონის გარეშე</option>
-                  {taskTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-            )}
-
-            {/* Numeric fields from the chosen template */}
-            {activeTemplate?.numericFields?.length ? (
-              <div style={{ marginBottom: 14, background: 'var(--tint)', borderRadius: 10, padding: '12px 14px' }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                  {activeTemplate.name}
-                </p>
-                {activeTemplate.numericFields.map(f => (
-                  <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 9, alignItems: 'center', marginBottom: 8 }}>
-                    <label style={{ fontSize: 13.5, color: 'var(--ink)' }}>{f.label}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={numericValues[f.id] ?? ''}
-                      onChange={e => setNumericValues(prev => ({ ...prev, [f.id]: e.target.value }))}
-                      style={{ width: 80, fontSize: 15, fontWeight: 700, textAlign: 'right', color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px' }}
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {/* Checklist template */}
-            {checklistTemplates.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={lblStyle}>Checklist template</label>
-                <select value={checklistTemplateId} onChange={e => setChecklistTemplateId(e.target.value)} style={selStyle}>
-                  <option value="">None</option>
-                  {checklistTemplates.map(t => <option key={t.id} value={t.id}>{t.name} · {t.items.length} steps</option>)}
-                </select>
-              </div>
-            )}
 
             {error && <p style={{ color: 'var(--stuck)', fontSize: 13.5, marginBottom: 10 }}>{error}</p>}
           </div>
