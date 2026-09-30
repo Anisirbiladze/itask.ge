@@ -11,17 +11,22 @@ export async function PUT(req: Request) {
   const session = await getSession()
   if (session.role !== 'CEO') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const updates: { key: string; page: string; value: string }[] = await req.json()
+  try {
+    const updates: { key: string; page: string; value: string }[] = await req.json()
 
-  await Promise.all(
-    updates.map(u =>
-      prisma.translation.upsert({
+    // Run upserts sequentially to avoid connection pool exhaustion
+    for (const u of updates) {
+      await prisma.translation.upsert({
         where: { key: u.key },
         update: { value: u.value },
         create: { key: u.key, page: u.page, value: u.value },
       })
-    )
-  )
+    }
 
-  return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[translations PUT]', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
