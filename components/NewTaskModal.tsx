@@ -18,7 +18,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
   onClose: () => void
   onCreated: () => void
 }) {
-  const { users: allUsers } = useApp()
+  const { users: allUsers, t } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? '')
@@ -47,7 +47,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim()) { setError('Task title is required'); return }
+    if (!title.trim()) { setError(t('new_task.err_title')); return }
     setSaving(true)
     setError('')
     try {
@@ -96,22 +96,22 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
       <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 580, overflow: 'hidden', boxShadow: '0 18px 48px rgba(18,24,31,.22)' }}>
         <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--line-soft)', position: 'relative' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 13, right: 13, width: 30, height: 30, borderRadius: 8, border: 0, background: '#F1F4F6', color: 'var(--muted)', cursor: 'pointer', fontSize: 17 }}>×</button>
-          <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em' }}>New task</h2>
+          <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em' }}>{t('new_task.title')}</h2>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ padding: '15px 18px' }}>
             {/* Title */}
             <div style={{ marginBottom: 14 }}>
-              <label style={lblStyle}>Task</label>
-              <input type="text" required value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs doing?"
+              <label style={lblStyle}>{t('new_task.label_task')}</label>
+              <input type="text" required value={title} onChange={e => setTitle(e.target.value)} placeholder={t('new_task.placeholder_task')}
                 style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} autoFocus />
             </div>
 
             {/* Description */}
             <div style={{ marginBottom: 10 }}>
-              <label style={lblStyle}>Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional — the brief, in as much detail as needed"
+              <label style={lblStyle}>{t('new_task.label_desc')}</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('new_task.placeholder_desc')}
                 style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
             </div>
 
@@ -120,7 +120,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
               {/* Image button */}
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, minHeight: 42 }}>
                 <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="4" width="16" height="13" rx="2"/><circle cx="7.5" cy="9" r="1.5"/><path d="M2 15l4-4 3 3 3-4 5 5"/></svg>
-                Add image
+                {t('task.add_image')}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
                   const file = e.target.files?.[0]
                   if (file && images.length < 3) setImages(prev => [...prev, file])
@@ -130,7 +130,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
 
               {/* Link bar */}
               <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
-                placeholder="Paste a link…"
+                placeholder={t('new_task.link_placeholder')}
                 style={{ flex: 1, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '9px 12px', minHeight: 42 }} />
             </div>
 
@@ -154,37 +154,35 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
             {/* Company + Assignee */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 6 }}>
               <div>
-                <label style={lblStyle}>Company</label>
+                <label style={lblStyle}>{t('new_task.label_company')}</label>
                 <select value={companyId} onChange={e => setCompanyId(e.target.value)} style={selStyle}>
-                  <option value="">Choose…</option>
+                  <option value="">{t('new_task.company_choose')}</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={lblStyle}>Assign to</label>
+                <label style={lblStyle}>{t('new_task.label_assignee')}</label>
                 <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={selStyle}>
-                  <option value="">Nobody yet</option>
+                  <option value="">{t('new_task.assign_nobody')}</option>
                   {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
                 </select>
               </div>
             </div>
-            <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>
-              Either one is enough. A task with a company but no person waits in that company's unassigned list.
-            </p>
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>{t('new_task.assign_hint')}</p>
 
             {/* Due + Priority */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 14 }}>
               <div>
-                <label style={lblStyle}>Due</label>
+                <label style={lblStyle}>{t('new_task.label_due')}</label>
                 <input type="date" value={dueAt} onChange={e => setDueAt(e.target.value)}
                   style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
               </div>
               <div>
-                <label style={lblStyle}>Priority</label>
+                <label style={lblStyle}>{t('new_task.label_priority')}</label>
                 <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={selStyle}>
-                  <option value={2}>Normal</option>
-                  <option value={1}>Low</option>
-                  <option value={3}>High</option>
+                  <option value={2}>{t('new_task.priority_normal')}</option>
+                  <option value={1}>{t('new_task.priority_low')}</option>
+                  <option value={3}>{t('new_task.priority_high')}</option>
                 </select>
               </div>
             </div>
@@ -194,10 +192,10 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
 
           <div style={{ padding: '14px 18px', display: 'flex', gap: 9, borderTop: '1px solid var(--line-soft)' }}>
             <button type="button" onClick={onClose} style={{ flex: 1, fontSize: 14, fontWeight: 600, padding: 11, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer', minHeight: 44 }}>
-              Cancel
+              {t('new_task.btn_cancel')}
             </button>
             <button type="submit" disabled={saving} style={{ flex: 1, fontSize: 14, fontWeight: 600, padding: 11, borderRadius: 9, border: 'none', background: 'var(--done)', color: '#fff', cursor: 'pointer', opacity: saving ? 0.7 : 1, minHeight: 44 }}>
-              {saving ? 'Creating…' : 'Create task'}
+              {saving ? t('new_task.btn_creating') : t('new_task.btn_create')}
             </button>
           </div>
         </form>

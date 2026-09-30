@@ -128,6 +128,28 @@ export const DEFAULT_TRANSLATIONS: Record<string, TranslationEntry> = {
   'task.delete_confirm': { page: 'task', default: 'Delete this task? It will be archived.' },
   'task.parent_task':    { page: 'task', default: 'Parent task' },
 
+  /* ── New task modal ─────────────────────────────────────────────── */
+  'new_task.title':          { page: 'task', default: 'New task' },
+  'new_task.label_task':     { page: 'task', default: 'Task' },
+  'new_task.placeholder_task': { page: 'task', default: 'What needs doing?' },
+  'new_task.label_desc':     { page: 'task', default: 'Description' },
+  'new_task.placeholder_desc': { page: 'task', default: 'Optional — the brief, in as much detail as needed' },
+  'new_task.label_company':  { page: 'task', default: 'Company' },
+  'new_task.company_choose': { page: 'task', default: 'Choose…' },
+  'new_task.label_assignee': { page: 'task', default: 'Assign to' },
+  'new_task.assign_nobody':  { page: 'task', default: 'Nobody yet' },
+  'new_task.assign_hint':    { page: 'task', default: "Either one is enough. A task with a company but no person waits in that company's unassigned list." },
+  'new_task.label_due':      { page: 'task', default: 'Due' },
+  'new_task.label_priority': { page: 'task', default: 'Priority' },
+  'new_task.priority_normal':{ page: 'task', default: 'Normal' },
+  'new_task.priority_low':   { page: 'task', default: 'Low' },
+  'new_task.priority_high':  { page: 'task', default: 'High' },
+  'new_task.link_placeholder': { page: 'task', default: 'Paste a link…' },
+  'new_task.btn_cancel':     { page: 'task', default: 'Cancel' },
+  'new_task.btn_create':     { page: 'task', default: 'Create task' },
+  'new_task.btn_creating':   { page: 'task', default: 'Creating…' },
+  'new_task.err_title':      { page: 'task', default: 'Task title is required' },
+
   /* ── Translations page ──────────────────────────────────────────── */
   'translations.title':  { page: 'translations', default: 'Translations' },
   'translations.key':    { page: 'translations', default: 'Key' },
