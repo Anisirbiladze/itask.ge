@@ -149,7 +149,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
             >
               <span className="lead">
                 <span className="ico"><PlusIcon /></span>
-                New task
+                {t('global.new_task')}
               </span>
             </button>
           )}

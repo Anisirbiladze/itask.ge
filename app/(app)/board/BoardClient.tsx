@@ -51,11 +51,10 @@ const CEO_STATUSES    = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW', 'TO_APPROVE'
 export default function BoardClient({
   initialTasks,
   initialUsers,
-  allTags = [],
+
 }: {
   initialTasks: Task[]
   initialUsers: { id: string; displayName: string; photoUrl?: string | null }[]
-  allTags?: { id: string; name: string; color: string }[]
 }) {
   const { companies, me, openNewTask, refreshCompanies } = useApp()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
@@ -66,24 +65,14 @@ export default function BoardClient({
   const searchParams = useSearchParams()
 
   // All filter state lives in the URL
-  const groupBy   = 'person' as const
+  const groupBy = (searchParams.get('group') as 'all' | 'person') ?? 'all'
   const filter    = searchParams.get('filter') ?? (me?.role === 'MEMBER' ? 'my_tasks' : 'all')
-  const tagFilter = searchParams.get('tags')?.split(',').filter(Boolean) ?? []
-
-  function toggleTagFilter(tagId: string) {
-    const p = new URLSearchParams(searchParams.toString())
-    const cur = p.get('tags')?.split(',').filter(Boolean) ?? []
-    const next = cur.includes(tagId) ? cur.filter(t => t !== tagId) : [...cur, tagId]
-    if (next.length) p.set('tags', next.join(','))
-    else p.delete('tags')
-    router.replace(`/board?${p.toString()}`, { scroll: false })
-  }
-
   function setParam(key: string, value: string) {
     const p = new URLSearchParams(searchParams.toString())
     p.set(key, value)
     router.replace(`/board?${p.toString()}`, { scroll: false })
   }
+  function setGroupBy(v: 'all' | 'person') { setParam('group', v) }
   function setFilter(v: string) { setParam('filter', v) }
 
   const refetch = useCallback(async () => {
@@ -116,8 +105,6 @@ export default function BoardClient({
   const filteredTasks = useMemo(() => {
     const now = new Date()
     let result = tasks
-    // tag filter
-    if (tagFilter.length > 0) result = result.filter(t => tagFilter.every(tid => t.tags?.some(tag => tag.id === tid)))
 
     const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999)
     const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
@@ -155,6 +142,10 @@ export default function BoardClient({
   })), [filteredTasks, companies, users])
 
   const sections: GroupedSection[] = (() => {
+    if (groupBy === 'all') {
+      const open = augmented.filter(t => t.status !== 'COMPLETED')
+      return [{ key: 'all', label: '', color: '#6B7480', accentText: 'var(--muted)', tasks: augmented, openCount: open.length, stuckCount: open.filter(t => t.computedStatus === 'WAITING').length }]
+    }
     const byPerson: Record<string, Task[]> = {}
     for (const t of augmented) {
       const uid = t.assigneeId ?? '__unassigned'
@@ -230,6 +221,10 @@ export default function BoardClient({
 
       {/* Filter bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="seg">
+          <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
+          <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
+        </div>
         <div className="seg" style={{ flexWrap: 'wrap' }}>
           <FilterBtn label="ყველა"       active={filter === 'all'}         onClick={() => setFilter('all')} />
           {me && <FilterBtn label="ჩემი" active={filter === 'my_tasks'}    onClick={() => setFilter('my_tasks')} count={cnt.my_tasks} />}
@@ -243,36 +238,7 @@ export default function BoardClient({
         </div>
       </div>
 
-      {/* Tag filter row */}
-      {allTags.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>ტეგი:</span>
-          {allTags.map(tag => {
-            const active = tagFilter.includes(tag.id)
-            return (
-              <button key={tag.id} onClick={() => toggleTagFilter(tag.id)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
-                  background: active ? `${tag.color}33` : 'var(--surface)',
-                  color: active ? tag.color : 'var(--ink-3)',
-                  border: `1px solid ${active ? tag.color : 'var(--line)'}`,
-                  transition: 'all .15s',
-                  fontFamily: 'var(--font-noto-geo),"Noto Sans Georgian",sans-serif',
-                }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: tag.color, flexShrink: 0 }} />
-                {tag.name}
-              </button>
-            )
-          })}
-          {tagFilter.length > 0 && (
-            <button onClick={() => { const p = new URLSearchParams(searchParams.toString()); p.delete('tags'); router.replace(`/board?${p.toString()}`, { scroll: false }) }}
-              style={{ fontSize: 11.5, color: 'var(--muted)', background: 'none', border: 0, cursor: 'pointer', padding: '3px 6px' }}>
-              ✕ გასუფთავება
-            </button>
-          )}
-        </div>
-      )}
+
 
       {sections.map(section => (
         <BoardSection
@@ -342,7 +308,7 @@ function FilterBtn({ label, active, onClick, count, dot }: {
 /* ── Board section ─────────────────────────────────────────────────── */
 function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask, me }: {
   section: GroupedSection
-  groupBy: 'company' | 'person'
+  groupBy: 'all' | 'person'
   onRowClick: (task: Task) => void
   onStatusChange: (taskId: string, newStatus: string, original: Task) => void
   onAddTask?: () => void
@@ -350,12 +316,14 @@ function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask,
 }) {
   return (
     <section style={{ marginBottom: 34, ['--gc' as string]: section.color }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 11, paddingLeft: 2 }}>
-        <h2 className="ka" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.03em', color: section.color }}>{section.label}</h2>
-        <span style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 500 }}>
-          {section.openCount} მიმდინარე{section.stuckCount > 0 && <span style={{ color: 'var(--stuck-2)', fontWeight: 600 }}> · {section.stuckCount} გაჭედილი</span>}
-        </span>
-      </div>
+      {section.label && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 11, paddingLeft: 2 }}>
+          <h2 className="ka" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.03em', color: section.color }}>{section.label}</h2>
+          <span style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 500 }}>
+            {section.openCount} მიმდინარე{section.stuckCount > 0 && <span style={{ color: 'var(--stuck-2)', fontWeight: 600 }}> · {section.stuckCount} გაჭედილი</span>}
+          </span>
+        </div>
+      )}
 
       {section.tasks.length === 0 ? (
         <div style={{ color: 'var(--ink-3)', fontSize: 13.5, padding: '18px 4px' }}>
@@ -368,7 +336,6 @@ function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask,
             <div className="board-cols">
               <span>დავალება</span>
               <span />
-              <span>{groupBy === 'company' ? 'შემსრულებელი' : 'კომპანია'}</span>
               <span>პრიორიტეტი</span>
               <span>მიმდინარეობა</span>
               <span>დარჩა</span>
@@ -446,7 +413,6 @@ function StatusBtn({ task, onStatusChange, me }: {
         onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
         style={{ width: '100%', minHeight: 50, borderRadius: 9 }}
       >
-        <span className="st-puls" />
         {waitLabel}
       </button>
       {open && (
@@ -480,7 +446,7 @@ function PriorityPill({ priority }: { priority: number }) {
 
 /* ── Task row ───────────────────────────────────────────────────────── */
 function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me }: {
-  task: Task; groupBy: 'company' | 'person'; groupColor: string; onClick: () => void; delay: number
+  task: Task; groupBy: 'all' | 'person'; groupColor: string; onClick: () => void; delay: number
   onStatusChange: (s: string) => void
   me: { id: string; role: string } | null
 }) {
@@ -490,24 +456,13 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me
     <div className="board-row" style={{ animationDelay: `${delay}s`, ['--gc' as string]: groupColor }}>
       <div className="cel cel-task" onClick={onClick}>
         <span>{task.title}</span>
-        {task.tags && task.tags.length > 0 && (
-          <span style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-            {task.tags.map(tag => (
-              <TagChip key={tag.id} tag={tag} />
-            ))}
-          </span>
-        )}
       </div>
       <div className="cel cel-ow" style={{ justifyContent: 'center' }}>
         {task.assignee
           ? <Avatar name={task.assignee.displayName} size={34} photoUrl={task.assignee.photoUrl} />
           : <span style={{ color: 'var(--ink-3)', fontSize: 13 }}>—</span>}
       </div>
-      <div className="cel cel-nm" style={{ justifyContent: 'center', textAlign: 'center' }}>
-        {groupBy === 'company'
-          ? (task.assignee?.displayName ?? '—')
-          : (task.company ? <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: task.company.accentInk, background: task.company.color }}>{task.company.name}</span> : '—')}
-      </div>
+
       <div className="cel">
         <PriorityPill priority={task.priority} />
       </div>

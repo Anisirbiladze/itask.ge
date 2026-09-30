@@ -6,6 +6,7 @@ export interface TranslationEntry {
 export const DEFAULT_TRANSLATIONS: Record<string, TranslationEntry> = {
   /* ── Global / Navigation ─────────────────────────────────────── */
   'nav.board':           { page: 'global', default: 'Board' },
+  'global.new_task':     { page: 'global', default: 'New task' },
   'nav.reports':         { page: 'global', default: 'Reports' },
   'nav.people':          { page: 'global', default: 'People' },
   'nav.settings':        { page: 'global', default: 'Settings' },
