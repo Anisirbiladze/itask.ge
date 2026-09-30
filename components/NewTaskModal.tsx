@@ -205,5 +205,5 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
 }
 
 const lblStyle: React.CSSProperties = {
-  display: 'block', fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', marginBottom: 6,
+  display: 'block', fontSize: 11.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 6,
 }
