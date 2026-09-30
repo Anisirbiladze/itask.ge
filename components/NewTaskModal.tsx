@@ -168,7 +168,7 @@ export default function NewTaskModal({ companies, defaultCompanyId, onClose, onC
                 </select>
               </div>
             </div>
-            <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>{t('new_task.assign_hint')}</p>
+
 
             {/* Due + Priority */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 14 }}>
