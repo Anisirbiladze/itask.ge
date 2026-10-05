@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter, useSearchParams } from 'next/navigation'
+
 import { useApp, Avatar } from '@/components/AppShell'
 import TaskDetailModal from '@/components/TaskDetailModal'
 import { isLate } from '@/lib/utils'
@@ -62,21 +62,10 @@ export default function BoardClient({
   const [users] = useState(initialUsers)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // All filter/sort state lives in the URL
-  const groupBy = (searchParams.get('group') as 'all' | 'person') ?? 'all'
-  const filter  = searchParams.get('filter') ?? 'all'
-  const sortBy  = (searchParams.get('sort') as 'priority' | 'due' | 'progress') ?? 'priority'
-  function setParam(key: string, value: string) {
-    const p = new URLSearchParams(searchParams.toString())
-    p.set(key, value)
-    router.replace(`/board?${p.toString()}`, { scroll: false })
-  }
-  function setGroupBy(v: 'all' | 'person') { setParam('group', v) }
-  function setFilter(v: string) { setParam('filter', v) }
-  function setSortBy(v: string) { setParam('sort', v) }
+  // Filter/sort state is local — instant, no server round-trips
+  const [groupBy, setGroupBy] = useState<'all' | 'person'>('all')
+  const [filter,  setFilter]  = useState('all')
+  const [sortBy,  setSortBy]  = useState<'priority' | 'due' | 'progress'>('priority')
 
   const refetch = useCallback(async () => {
     const res = await fetch('/api/tasks')
@@ -230,7 +219,7 @@ export default function BoardClient({
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
         </select>
         {/* Sort dropdown */}
-        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={dropStyle}>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as 'priority' | 'due' | 'progress')} style={dropStyle}>
           <option value="priority">↑ პრიორიტეტით</option>
           <option value="due">↑ ვადით</option>
           <option value="progress">↑ შესრულების პროგრესით</option>
