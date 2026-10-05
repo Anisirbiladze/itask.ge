@@ -114,22 +114,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (to === 'COMPLETED') events.push({ type: 'COMPLETED' })
   }
 
-  // Due date change
+  // Due date change — allowed for all authenticated users, reason always required
   if (body.dueAt !== undefined) {
-    if (session.role === 'MEMBER') {
-      const settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
-      if (!settings?.membersCanChangeDueDate) {
-        return NextResponse.json({ error: 'You cannot change due dates' }, { status: 403 })
-      }
-      const settings2 = await prisma.setting.findUnique({ where: { id: 'singleton' } })
-      if (settings2?.requireReasonOnDueChange && !body.reason) {
-        return NextResponse.json({ error: 'A reason is required when changing the due date' }, { status: 400 })
-      }
-    } else {
-      const settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
-      if (settings?.requireReasonOnDueChange && !body.reason) {
-        return NextResponse.json({ error: 'A reason is required when changing the due date' }, { status: 400 })
-      }
+    if (!body.reason?.trim()) {
+      return NextResponse.json({ error: 'მიზეზის მითითება სავალდებულოა' }, { status: 400 })
     }
     const from = task.dueAt ? task.dueAt.toISOString() : null
     const to = body.dueAt ? new Date(body.dueAt).toISOString() : null

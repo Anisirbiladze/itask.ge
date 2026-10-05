@@ -217,15 +217,23 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     onUpdated(); onClose()
   }
 
+  // Convert UTC ISO string to local datetime-local value (YYYY-MM-DDTHH:mm)
+  function utcToLocalInput(utcStr: string): string {
+    const d = new Date(utcStr)
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
+    return local.toISOString().slice(0, 16)
+  }
+
   async function changeDueDate(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (!newDue) { setError('Please select a date'); return }
+    if (!dueReason.trim()) { setError('გთხოვთ მიუთითოთ მიზეზი'); return }
     setSaving(true)
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dueAt: newDue, reason: dueReason }),
+      body: JSON.stringify({ dueAt: new Date(newDue).toISOString(), reason: dueReason }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error ?? 'Failed'); setSaving(false); return }
@@ -430,13 +438,9 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
             <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>{t('task.change_due_title')}</div>
             <input type="datetime-local" value={newDue} onChange={e => setNewDue(e.target.value)} required
               style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
-            {task.settings.requireReasonOnDueChange && (
-              <>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>{t('task.reason_label')}</div>
-                <input type="text" value={dueReason} onChange={e => setDueReason(e.target.value)} required placeholder={t('task.reason_placeholder')}
-                  style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
-              </>
-            )}
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>{t('task.reason_label')}</div>
+            <input type="text" value={dueReason} onChange={e => setDueReason(e.target.value)} required placeholder={t('task.reason_placeholder')}
+              style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
             {error && <p style={{ color: 'var(--stuck)', fontSize: 13.5 }}>{error}</p>}
             <div style={{ display: 'flex', gap: 9 }}>
               <button type="button" onClick={() => setChangingDue(false)} style={actStyle}>{t('task.btn_cancel')}</button>
@@ -492,7 +496,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           {me?.role === 'CEO' && !editing && (
             <button onClick={openEdit} style={actStyle}>{t('task.btn_edit')}</button>
           )}
-          <button onClick={() => { setChangingDue(true); setNewDue(task.dueAt ? task.dueAt.slice(0, 16) : '') }} style={actStyle}>
+          <button onClick={() => { setChangingDue(true); setDueReason(''); setNewDue(task.dueAt ? utcToLocalInput(task.dueAt) : '') }} style={actStyle}>
             {t('task.btn_change_due')}
           </button>
           {me?.role === 'CEO' && (
