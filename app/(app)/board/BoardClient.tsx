@@ -431,9 +431,12 @@ function StatusBtn({ task, onStatusChange, me }: {
         className={`st-btn ${cls}`}
         type="button"
         onClick={openMenu}
-        style={{ width: '100%', minHeight: 50, borderRadius: 9 }}
+        style={{ width: '100%', minHeight: 50, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
       >
         {waitLabel}
+        <svg width={10} height={10} viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0, opacity: 0.6 }}>
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
       {open && menuPos && createPortal(
         <div
