@@ -106,7 +106,7 @@ label {
 .tleft.over b { color: var(--stuck-2); }
 .tleft.done b { color: var(--done-2); }
 /* status cell v4 */
-.cel-st { padding: 0; background: none; box-shadow: none; overflow: hidden; border-radius: 9px; }
+.cel-st { padding: 0; background: none; box-shadow: none; overflow: visible; border-radius: 9px; }
 .cel-st .st-picker { width: 100%; align-self: stretch; height: 100%; }
 .cel-st .st-btn { height: 100%; }
 .st-btn { width: 100%; height: 100%; min-height: 50px; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .045em; font-family: var(--font-noto-geo),'Noto Sans Georgian',sans-serif; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; cursor: pointer; border: 0; transition: transform .18s var(--spring), box-shadow .22s, filter .18s; }
