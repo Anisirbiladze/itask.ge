@@ -14,7 +14,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
   onClose: () => void
   onCreated: () => void
 }) {
-  const { users: allUsers, companies, t } = useApp()
+  const { companies, t } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   // Auto-select the first (only) company — no picker needed
@@ -26,12 +26,15 @@ export default function NewTaskModal({ onClose, onCreated }: {
   const [linkUrl, setLinkUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [users, setUsers] = useState<{ id: string; displayName: string }[]>([])
 
-  const users = allUsers
-
+  // Fetch fresh user list when modal opens
   useEffect(() => {
-    if (assigneeId && !users.find(u => u.id === assigneeId)) setAssigneeId('')
-  }, [users, assigneeId])
+    fetch('/api/users')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { id: string; displayName: string }[]) => setUsers(data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
