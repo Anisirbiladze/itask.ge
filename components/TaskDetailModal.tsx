@@ -82,7 +82,9 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [loading, setLoading] = useState(!initialData)
   const [histOpen, setHistOpen] = useState(false)
   const [changingDue, setChangingDue] = useState(false)
-  const [newDue, setNewDue] = useState('')
+  const [newDueDate,   setNewDueDate]   = useState('')
+  const [newDueHour,   setNewDueHour]   = useState(19)
+  const [newDueMinute, setNewDueMinute] = useState(0)
   const [dueReason, setDueReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -217,23 +219,23 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     onUpdated(); onClose()
   }
 
-  // Convert UTC ISO string to local datetime-local value (YYYY-MM-DDTHH:mm)
-  function utcToLocalInput(utcStr: string): string {
+  // Convert UTC ISO string to local date parts for the 24-hour pickers
+  function utcToLocalParts(utcStr: string) {
     const d = new Date(utcStr)
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
-    return local.toISOString().slice(0, 16)
+    return { date: [d.getFullYear(), d.getMonth()+1, d.getDate()].map((n,i) => i===0?String(n):String(n).padStart(2,'0')).join('-'), hour: d.getHours(), minute: d.getMinutes() }
   }
 
   async function changeDueDate(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!newDue) { setError('Please select a date'); return }
+    if (!newDueDate) { setError('Please select a date'); return }
     if (!dueReason.trim()) { setError('გთხოვთ მიუთითოთ მიზეზი'); return }
     setSaving(true)
+    const isoStr = new Date(`${newDueDate}T${String(newDueHour).padStart(2,'0')}:${String(newDueMinute).padStart(2,'0')}`).toISOString()
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dueAt: new Date(newDue).toISOString(), reason: dueReason }),
+      body: JSON.stringify({ dueAt: isoStr, reason: dueReason }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error ?? 'Failed'); setSaving(false); return }
@@ -436,8 +438,24 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
         {changingDue && (
           <form onSubmit={changeDueDate} style={{ padding: '15px 18px', borderBottom: '1px solid var(--line-soft)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>{t('task.change_due_title')}</div>
-            <input type="datetime-local" value={newDue} onChange={e => setNewDue(e.target.value)} required
-              style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} required
+                onClick={e => { try { (e.target as HTMLInputElement).showPicker() } catch {} }}
+                style={{ flex: 1, fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 10px', cursor: 'pointer', minWidth: 0 }} />
+              <select value={newDueHour} onChange={e => setNewDueHour(Number(e.target.value))}
+                style={{ fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 6px', cursor: 'pointer' }}>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                ))}
+              </select>
+              <span style={{ color: 'var(--muted)' }}>:</span>
+              <select value={newDueMinute} onChange={e => setNewDueMinute(Number(e.target.value))}
+                style={{ fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 6px', cursor: 'pointer' }}>
+                {Array.from({ length: 60 }, (_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                ))}
+              </select>
+            </div>
             <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>{t('task.reason_label')}</div>
             <input type="text" value={dueReason} onChange={e => setDueReason(e.target.value)} required placeholder={t('task.reason_placeholder')}
               style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px' }} />
@@ -496,7 +514,11 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           {me?.role === 'CEO' && !editing && (
             <button onClick={openEdit} style={actStyle}>{t('task.btn_edit')}</button>
           )}
-          <button onClick={() => { setChangingDue(true); setDueReason(''); setNewDue(task.dueAt ? utcToLocalInput(task.dueAt) : '') }} style={actStyle}>
+          <button onClick={() => {
+            setChangingDue(true); setDueReason('')
+            if (task.dueAt) { const p = utcToLocalParts(task.dueAt); setNewDueDate(p.date); setNewDueHour(p.hour); setNewDueMinute(p.minute) }
+            else { const now = new Date(); setNewDueDate(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`); setNewDueHour(19); setNewDueMinute(0) }
+          }} style={actStyle}>
             {t('task.btn_change_due')}
           </button>
           {me?.role === 'CEO' && (
