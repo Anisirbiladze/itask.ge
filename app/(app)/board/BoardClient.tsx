@@ -65,9 +65,10 @@ export default function BoardClient({
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // All filter state lives in the URL
+  // All filter/sort state lives in the URL
   const groupBy = (searchParams.get('group') as 'all' | 'person') ?? 'all'
-  const filter    = searchParams.get('filter') ?? (me?.role === 'MEMBER' ? 'my_tasks' : 'all')
+  const filter  = searchParams.get('filter') ?? 'all'
+  const sortBy  = (searchParams.get('sort') as 'priority' | 'due' | 'progress') ?? 'priority'
   function setParam(key: string, value: string) {
     const p = new URLSearchParams(searchParams.toString())
     p.set(key, value)
@@ -75,6 +76,7 @@ export default function BoardClient({
   }
   function setGroupBy(v: 'all' | 'person') { setParam('group', v) }
   function setFilter(v: string) { setParam('filter', v) }
+  function setSortBy(v: string) { setParam('sort', v) }
 
   const refetch = useCallback(async () => {
     const res = await fetch('/api/tasks')
@@ -102,39 +104,43 @@ export default function BoardClient({
     }
   }
 
-  /* ── Filter tasks ─────────────────────────────────────────────────── */
+  /* ── Filter + sort tasks ──────────────────────────────────────────── */
   const filteredTasks = useMemo(() => {
     const now = new Date()
     let result = tasks
 
-    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999)
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
-
     switch (filter) {
-      case 'my_tasks':
-        result = result.filter(t => t.assigneeId === me?.id); break
-      case 'due_today':
-        result = result.filter(t => t.dueAt && new Date(t.dueAt) >= todayStart && new Date(t.dueAt) <= todayEnd && t.status !== 'COMPLETED'); break
-      case 'overdue':
-        result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
+      case 'not_started':
+        result = result.filter(t => t.status === 'NOT_STARTED'); break
       case 'in_progress':
         result = result.filter(t => t.status === 'IN_PROGRESS'); break
-      case 'to_review':
-        result = result.filter(t => t.status === 'TO_REVIEW'); break
-      case 'to_approve':
-        result = result.filter(t => t.status === 'TO_APPROVE'); break
       case 'completed':
         result = result.filter(t => t.status === 'COMPLETED'); break
-      case 'stuck':
-        result = result.filter(t => t.computedStatus === 'WAITING' || (t.status === 'IN_PROGRESS' && t.dueAt && new Date(t.dueAt) < now)); break
-      case 'week': {
-        const endOfWeek = new Date(now)
-        endOfWeek.setDate(now.getDate() + (7 - now.getDay()))
-        result = result.filter(t => t.dueAt && new Date(t.dueAt) <= endOfWeek && t.status !== 'COMPLETED'); break
-      }
+      case 'overdue':
+        result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
     }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'priority') {
+        return (b.priority ?? 2) - (a.priority ?? 2)
+      }
+      if (sortBy === 'due') {
+        if (!a.dueAt && !b.dueAt) return 0
+        if (!a.dueAt) return 1
+        if (!b.dueAt) return -1
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+      }
+      if (sortBy === 'progress') {
+        const pa = a.checklistPct ?? (a.status === 'COMPLETED' ? 100 : 0)
+        const pb = b.checklistPct ?? (b.status === 'COMPLETED' ? 100 : 0)
+        return pb - pa
+      }
+      return 0
+    })
+
     return result
-  }, [tasks, filter, me?.id])
+  }, [tasks, filter, sortBy])
 
   const augmented: Task[] = useMemo(() => filteredTasks.map(t => ({
     ...t,
@@ -177,30 +183,18 @@ export default function BoardClient({
 
   /* ── Stats and filter counts ──────────────────────────────────────── */
   const companyTasks = tasks
-
   const now = new Date()
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
-  const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999)
-  const weekEnd    = new Date(now); weekEnd.setDate(now.getDate() + 7)
 
   const cnt = useMemo(() => ({
-    my_tasks:   companyTasks.filter(t => t.assigneeId === me?.id && t.status !== 'COMPLETED').length,
-    stuck:      companyTasks.filter(t => t.computedStatus === 'WAITING').length,
-    week:       companyTasks.filter(t => t.dueAt && new Date(t.dueAt) <= weekEnd && t.status !== 'COMPLETED').length,
-    to_review:  companyTasks.filter(t => t.status === 'TO_REVIEW').length,
-    to_approve: companyTasks.filter(t => t.status === 'TO_APPROVE').length,
-    completed:  companyTasks.filter(t => t.status === 'COMPLETED').length,
-    overdue:    companyTasks.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED').length,
-    due_today:  companyTasks.filter(t => t.dueAt && new Date(t.dueAt) >= todayStart && new Date(t.dueAt) <= todayEnd && t.status !== 'COMPLETED').length,
-    in_progress:companyTasks.filter(t => t.status === 'IN_PROGRESS').length,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [companyTasks, me?.id])
+    not_started: companyTasks.filter(t => t.status === 'NOT_STARTED').length,
+    in_progress: companyTasks.filter(t => t.status === 'IN_PROGRESS').length,
+    completed:   companyTasks.filter(t => t.status === 'COMPLETED').length,
+    overdue:     companyTasks.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED').length,
+  }), [companyTasks])
 
   const allOpen        = augmented.filter(t => t.status !== 'COMPLETED')
-  const stuckTotal     = cnt.stuck
   const withDue        = companyTasks.filter(t => t.dueAt && t.status !== 'COMPLETED')
   const onTimePct      = withDue.length ? Math.round(withDue.filter(t => !isLate(t.dueAt!)).length / withDue.length * 100) : 100
-  const completedCount = cnt.completed
 
   return (
     <div>
@@ -209,33 +203,37 @@ export default function BoardClient({
         <button className={`stat-item${filter === 'in_progress' ? ' active' : ''}`} onClick={() => setFilter(filter === 'in_progress' ? 'all' : 'in_progress')}>
           <b>{allOpen.length}</b><span>მიმდინარე</span>
         </button>
-        <button className={`stat-item${stuckTotal > 0 ? ' hot' : ''}${filter === 'stuck' ? ' active' : ''}`} onClick={() => setFilter(filter === 'stuck' ? 'all' : 'stuck')}>
-          <b>{stuckTotal}</b><span>გაჭედილი</span>
+        <button className={`stat-item${cnt.overdue > 0 ? ' hot' : ''}${filter === 'overdue' ? ' active' : ''}`} onClick={() => setFilter(filter === 'overdue' ? 'all' : 'overdue')}>
+          <b>{cnt.overdue}</b><span>ვადაგადაც.</span>
         </button>
         <button className="stat-item">
           <b>{onTimePct}%</b><span>ვადაში</span>
         </button>
         <button className={`stat-item${filter === 'completed' ? ' active' : ''}`} onClick={() => setFilter(filter === 'completed' ? 'all' : 'completed')}>
-          <b>{completedCount}</b><span>დასრულებული</span>
+          <b>{cnt.completed}</b><span>დასრულებული</span>
         </button>
       </div>
 
-      {/* Filter bar */}
+      {/* Filter + sort bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Grouping toggle */}
         <div className="seg">
           <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
           <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
         </div>
+        {/* Status filter */}
         <div className="seg" style={{ flexWrap: 'wrap' }}>
-          <FilterBtn label="ყველა"       active={filter === 'all'}         onClick={() => setFilter('all')} />
-          {me && <FilterBtn label="ჩემი" active={filter === 'my_tasks'}    onClick={() => setFilter('my_tasks')} count={cnt.my_tasks} />}
-          <FilterBtn label="მიმდინარე"   active={filter === 'in_progress'} onClick={() => setFilter('in_progress')} count={cnt.in_progress} />
-          <FilterBtn label="შემოწმება"   active={filter === 'to_review'}   onClick={() => setFilter('to_review')} count={cnt.to_review} dot="var(--review)" />
-          <FilterBtn label="დამტკიცება"  active={filter === 'to_approve'}  onClick={() => setFilter('to_approve')} count={cnt.to_approve} dot="var(--approve)" />
-          <FilterBtn label="გაჭედილი"    active={filter === 'stuck'}       onClick={() => setFilter('stuck')} count={cnt.stuck} dot="var(--stuck)" />
-          <FilterBtn label="ვადაგადაც."  active={filter === 'overdue'}     onClick={() => setFilter('overdue')} count={cnt.overdue} dot="var(--stuck)" />
-          <FilterBtn label="ამ კვირის"   active={filter === 'week'}        onClick={() => setFilter('week')} count={cnt.week} />
-          <FilterBtn label="დასრულდა"    active={filter === 'completed'}   onClick={() => setFilter('completed')} count={cnt.completed} dot="var(--done)" />
+          <FilterBtn label="ყველა"              active={filter === 'all'}         onClick={() => setFilter('all')} />
+          <FilterBtn label="დაუწყებელი"         active={filter === 'not_started'} onClick={() => setFilter('not_started')} count={cnt.not_started} />
+          <FilterBtn label="მიმდინარე"          active={filter === 'in_progress'} onClick={() => setFilter('in_progress')} count={cnt.in_progress} />
+          <FilterBtn label="დასრულებული"        active={filter === 'completed'}   onClick={() => setFilter('completed')} count={cnt.completed} dot="var(--done)" />
+          <FilterBtn label="ვადაგადაცილებული"   active={filter === 'overdue'}     onClick={() => setFilter('overdue')} count={cnt.overdue} dot="var(--stuck)" />
+        </div>
+        {/* Sort */}
+        <div className="seg" style={{ flexWrap: 'wrap' }}>
+          <FilterBtn label="პრიორიტეტით"           active={sortBy === 'priority'} onClick={() => setSortBy('priority')} />
+          <FilterBtn label="ვადით"                 active={sortBy === 'due'}      onClick={() => setSortBy('due')} />
+          <FilterBtn label="შესრულების პროგრესით"  active={sortBy === 'progress'} onClick={() => setSortBy('progress')} />
         </div>
       </div>
 
@@ -452,10 +450,10 @@ function StatusBtn({ task, onStatusChange, me }: {
 
 /* ── Priority pill ──────────────────────────────────────────────────── */
 const PR_PILL = [
-  { label: 'LOW',    cls: 'pr-pill-low'  },
-  { label: 'LOW',    cls: 'pr-pill-low'  },
-  { label: 'MEDIUM', cls: 'pr-pill-mid'  },
-  { label: 'HIGH',   cls: 'pr-pill-high' },
+  { label: 'დაბალი',    cls: 'pr-pill-low'  },
+  { label: 'დაბალი',    cls: 'pr-pill-low'  },
+  { label: 'ნორმალური', cls: 'pr-pill-mid'  },
+  { label: 'მაღალი',    cls: 'pr-pill-high' },
 ]
 function PriorityPill({ priority }: { priority: number }) {
   const { label, cls } = PR_PILL[Math.min(priority, 3)] ?? PR_PILL[0]
