@@ -14,7 +14,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
   onClose: () => void
   onCreated: () => void
 }) {
-  const { companies, t } = useApp()
+  const { companies, users: ctxUsers, t } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   // Auto-select the first (only) company — no picker needed
@@ -26,13 +26,15 @@ export default function NewTaskModal({ onClose, onCreated }: {
   const [linkUrl, setLinkUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [users, setUsers] = useState<{ id: string; displayName: string }[]>([])
+  // Start with context users (instant), then refresh from API
+  const [users, setUsers] = useState<{ id: string; displayName: string }[]>(ctxUsers)
 
-  // Fetch fresh user list when modal opens
   useEffect(() => {
     fetch('/api/users')
-      .then(r => r.ok ? r.json() : [])
-      .then((data: { id: string; displayName: string }[]) => setUsers(data))
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { id: string; displayName: string }[] | null) => {
+        if (Array.isArray(data) && data.length > 0) setUsers(data)
+      })
       .catch(() => {})
   }, [])
 
