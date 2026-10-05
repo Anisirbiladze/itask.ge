@@ -33,6 +33,7 @@ export default async function BoardPage() {
       orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
       include: {
         checklistItems: { select: { done: true } },
+        _count: { select: { comments: true } },
       },
     }),
     prisma.user.findMany({
@@ -62,6 +63,7 @@ export default async function BoardPage() {
       createdAt: t.createdAt.toISOString(),
       checklistPct: total > 0 ? Math.round((done / total) * 100) : null,
       checklistTotal: total, checklistDone: done,
+      commentCount: t._count?.comments ?? 0,
     }
   })
 

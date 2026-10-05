@@ -22,6 +22,7 @@ export interface Task {
   checklistPct: number | null
   checklistTotal: number
   checklistDone: number
+  commentCount?: number
   createdAt: string
   tags?: { id: string; name: string; color: string }[]
   company?: { id: string; name: string; color: string; accentInk: string; accentText: string } | null
@@ -520,6 +521,12 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me
     <div className="board-row" style={{ animationDelay: `${delay}s`, ['--gc' as string]: groupColor }}>
       <div className="cel cel-task" onClick={onClick}>
         <span>{task.title}</span>
+        {(task.commentCount ?? 0) > 0 && (
+          <span title={`${task.commentCount} კომენტარი`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 999, background: '#EEF2FF', color: '#4338CA', border: '1px solid #C7D2FE', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            {task.commentCount}
+          </span>
+        )}
         {creatorIsCeo && (
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', whiteSpace: 'nowrap', flexShrink: 0 }}>CEO</span>
         )}

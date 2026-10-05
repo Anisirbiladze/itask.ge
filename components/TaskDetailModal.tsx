@@ -4,6 +4,9 @@ import { Avatar } from '@/components/AppShell'
 import { formatDateFull, formatDatetime } from '@/lib/utils'
 import { useApp } from '@/components/AppShell'
 
+type CachedComment = { id: string; content: string; createdAt: string; author: { id: string; displayName: string; photoUrl: string | null } }
+const _commentCache = new Map<string, CachedComment[]>()
+
 interface TaskDetail {
   id: string
   title: string
@@ -99,7 +102,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [linkInput, setLinkInput] = useState('')
   const [uploadingImg, setUploadingImg] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
-  const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; author: { id: string; displayName: string; photoUrl: string | null } }[]>([])
+  const [comments, setComments] = useState<CachedComment[]>(() => _commentCache.get(taskId) ?? [])
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
 
@@ -154,7 +157,11 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
       fetch(`/api/tasks/${taskId}/comments`),
     ])
     if (taskRes.ok) setTask(await taskRes.json())
-    if (commentsRes.ok) setComments(await commentsRes.json())
+    if (commentsRes.ok) {
+      const data: CachedComment[] = await commentsRes.json()
+      _commentCache.set(taskId, data)
+      setComments(data)
+    }
     setLoading(false)
   }
 
@@ -449,7 +456,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
                     {(me?.id === c.author.id || me?.role === 'CEO') && (
                       <button onClick={() => {
                         fetch(`/api/tasks/${taskId}/comments`, { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ commentId: c.id }) })
-                        setComments(prev => prev.filter(x => x.id !== c.id))
+                        setComments(prev => { const next = prev.filter(x => x.id !== c.id); _commentCache.set(taskId, next); return next })
                       }} style={{ background: 'none', border: 0, cursor: 'pointer', color: '#9CA3AF', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
                     )}
                   </div>
@@ -468,7 +475,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
                   if (!commentText.trim() || postingComment) return
                   setPostingComment(true)
                   const res = await fetch(`/api/tasks/${taskId}/comments`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: commentText.trim() }) })
-                  if (res.ok) { const nc = await res.json(); setComments(prev => [...prev, nc]); setCommentText('') }
+                  if (res.ok) { const nc = await res.json(); setComments(prev => { const next = [...prev, nc]; _commentCache.set(taskId, next); return next }); setCommentText('') }
                   setPostingComment(false)
                 }
               }}
@@ -482,7 +489,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
                 if (!commentText.trim() || postingComment) return
                 setPostingComment(true)
                 const res = await fetch(`/api/tasks/${taskId}/comments`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: commentText.trim() }) })
-                if (res.ok) { const nc = await res.json(); setComments(prev => [...prev, nc]); setCommentText('') }
+                if (res.ok) { const nc = await res.json(); setComments(prev => { const next = [...prev, nc]; _commentCache.set(taskId, next); return next }); setCommentText('') }
                 setPostingComment(false)
               }}
               style={{ flexShrink: 0, padding: '9px 15px', borderRadius: 9, border: 'none', background: '#4F46E5', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (!commentText.trim() || postingComment) ? 0.5 : 1, minHeight: 42 }}>
