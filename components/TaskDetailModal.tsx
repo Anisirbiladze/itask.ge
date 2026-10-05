@@ -219,10 +219,15 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     onUpdated(); onClose()
   }
 
-  // Convert UTC ISO string to local date parts for the 24-hour pickers
+  // Convert UTC ISO string to Georgia-local date parts for the 24-hour pickers
+  // Georgia is UTC+4; add 4 hours to UTC to get local time
   function utcToLocalParts(utcStr: string) {
-    const d = new Date(utcStr)
-    return { date: [d.getFullYear(), d.getMonth()+1, d.getDate()].map((n,i) => i===0?String(n):String(n).padStart(2,'0')).join('-'), hour: d.getHours(), minute: d.getMinutes() }
+    const d = new Date(new Date(utcStr).getTime() + 4 * 60 * 60 * 1000)
+    return {
+      date: `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`,
+      hour: d.getUTCHours(),
+      minute: d.getUTCMinutes(),
+    }
   }
 
   async function changeDueDate(e: React.FormEvent) {
@@ -231,7 +236,8 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
     if (!newDueDate) { setError('Please select a date'); return }
     if (!dueReason.trim()) { setError('გთხოვთ მიუთითოთ მიზეზი'); return }
     setSaving(true)
-    const isoStr = new Date(`${newDueDate}T${String(newDueHour).padStart(2,'0')}:${String(newDueMinute).padStart(2,'0')}`).toISOString()
+    // Explicit +04:00 offset — app is Georgia-only
+    const isoStr = `${newDueDate}T${String(newDueHour).padStart(2,'0')}:${String(newDueMinute).padStart(2,'0')}:00+04:00`
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -306,8 +312,8 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1 }}>
               <div>
-                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t('task.originally_due')}</span>
-                <b style={{ display: 'block', fontSize: 15, fontWeight: 600 }}>{formatDateFull(task.originalDueAt)}</b>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>შექმნილია</span>
+                <b style={{ display: 'block', fontSize: 15, fontWeight: 600 }}>{formatDateFull(task.createdAt)}</b>
               </div>
               <div>
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t('task.due_now')}</span>

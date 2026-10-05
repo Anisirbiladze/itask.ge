@@ -65,7 +65,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
           description: description.trim() || null,
           companyId: companyId || null,
           assigneeId: assigneeId || null,
-          dueAt: dueDate ? new Date(`${dueDate}T${String(dueHour).padStart(2,'0')}:${String(dueMinute).padStart(2,'0')}`).toISOString() : null,
+          dueAt: dueDate ? `${dueDate}T${String(dueHour).padStart(2,'0')}:${String(dueMinute).padStart(2,'0')}:00+04:00` : null,
           priority,
           linkUrl: linkUrl.trim() || null,
         }),
