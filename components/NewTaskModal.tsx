@@ -9,8 +9,8 @@ function nowParts() {
   const day = String(d.getDate()).padStart(2, '0')
   return {
     date: `${y}-${mo}-${day}`,
-    hour: d.getHours(),
-    minute: d.getMinutes(),
+    hour: 19,
+    minute: 0,
   }
 }
 
