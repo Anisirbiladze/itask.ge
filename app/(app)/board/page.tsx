@@ -38,7 +38,7 @@ export default async function BoardPage() {
     prisma.user.findMany({
       where: { archived: false },
       orderBy: { name: 'asc' },
-      select: { id: true, displayName: true, photoUrl: true },
+      select: { id: true, displayName: true, photoUrl: true, role: true },
     }),
   ])
 
@@ -56,7 +56,7 @@ export default async function BoardPage() {
     const done = t.checklistItems?.filter(c => c.done).length ?? 0
     return {
       id: t.id, title: t.title, description: t.description,
-      companyId: t.companyId, assigneeId: t.assigneeId,
+      companyId: t.companyId, assigneeId: t.assigneeId, createdById: t.createdById,
       status: t.status, computedStatus, waitingHours, priority: t.priority,
       dueAt: t.dueAt?.toISOString() ?? null, originalDueAt: t.originalDueAt?.toISOString() ?? null,
       createdAt: t.createdAt.toISOString(),

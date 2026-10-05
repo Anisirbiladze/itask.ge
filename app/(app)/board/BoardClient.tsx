@@ -12,6 +12,7 @@ export interface Task {
   description?: string | null
   companyId: string | null
   assigneeId: string | null
+  createdById: string
   status: string
   computedStatus: string
   waitingHours: number | null
@@ -56,7 +57,7 @@ export default function BoardClient({
 
 }: {
   initialTasks: Task[]
-  initialUsers: { id: string; displayName: string; photoUrl?: string | null }[]
+  initialUsers: { id: string; displayName: string; photoUrl?: string | null; role: string }[]
 }) {
   const { companies, me, openNewTask, refreshCompanies } = useApp()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
@@ -261,6 +262,7 @@ export default function BoardClient({
           onStatusChange={changeStatus}
           onAddTask={me?.role === 'CEO' ? () => handleAddTask() : undefined}
           me={me}
+          users={users}
         />
       ))}
 
@@ -324,13 +326,14 @@ function FilterBtn({ label, active, onClick, count, dot }: {
 }
 
 /* ── Board section ─────────────────────────────────────────────────── */
-function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask, me }: {
+function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask, me, users }: {
   section: GroupedSection
   groupBy: 'all' | 'person'
   onRowClick: (task: Task) => void
   onStatusChange: (taskId: string, newStatus: string, original: Task) => void
   onAddTask?: () => void
   me: { id: string; role: string } | null
+  users: { id: string; role: string }[]
 }) {
   return (
     <section style={{ marginBottom: 34, ['--gc' as string]: section.color }}>
@@ -365,7 +368,7 @@ function BoardSection({ section, groupBy, onRowClick, onStatusChange, onAddTask,
                   key={task.id} task={task} groupBy={groupBy} groupColor={section.color}
                   onClick={() => onRowClick(task)} delay={i * 0.03}
                   onStatusChange={(s) => onStatusChange(task.id, s, task)}
-                  me={me}
+                  me={me} users={users}
                 />
               ))}
             </div>
@@ -483,17 +486,29 @@ function PriorityPill({ priority }: { priority: number }) {
 }
 
 /* ── Task row ───────────────────────────────────────────────────────── */
-function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me }: {
+function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me, users }: {
   task: Task; groupBy: 'all' | 'person'; groupColor: string; onClick: () => void; delay: number
   onStatusChange: (s: string) => void
   me: { id: string; role: string } | null
+  users: { id: string; role: string }[]
 }) {
   const pct = task.checklistPct ?? (task.status === 'COMPLETED' ? 100 : task.status === 'IN_PROGRESS' ? 50 : 0)
   const isDone = task.status === 'COMPLETED'
+
+  const creator = users.find(u => u.id === task.createdById)
+  const creatorIsCeo = creator?.role === 'CEO'
+  const isSelfAssigned = !creatorIsCeo && task.createdById === task.assigneeId
+
   return (
     <div className="board-row" style={{ animationDelay: `${delay}s`, ['--gc' as string]: groupColor }}>
       <div className="cel cel-task" onClick={onClick}>
         <span>{task.title}</span>
+        {creatorIsCeo && (
+          <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', whiteSpace: 'nowrap', flexShrink: 0 }}>CEO</span>
+        )}
+        {isSelfAssigned && (
+          <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', whiteSpace: 'nowrap', flexShrink: 0 }}>საკუთარი</span>
+        )}
       </div>
       <div className="cel cel-ow" style={{ justifyContent: 'center' }}>
         {task.assignee
