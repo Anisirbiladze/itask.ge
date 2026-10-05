@@ -46,8 +46,8 @@ export const ST_META: Record<string, { cls: string; label: string; dot: string }
   WAITING:     { cls: 'st-stuck',   label: 'გაჭედილი',       dot: '#F4556A' },
 }
 
-const MEMBER_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW'] as const
-const CEO_STATUSES    = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW', 'TO_APPROVE', 'COMPLETED'] as const
+const MEMBER_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] as const
+const CEO_STATUSES    = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] as const
 
 export default function BoardClient({
   initialTasks,
@@ -221,20 +221,20 @@ export default function BoardClient({
           <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
           <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
         </div>
-        {/* Status filter */}
-        <div className="seg" style={{ flexWrap: 'wrap' }}>
-          <FilterBtn label="ყველა"              active={filter === 'all'}         onClick={() => setFilter('all')} />
-          <FilterBtn label="დაუწყებელი"         active={filter === 'not_started'} onClick={() => setFilter('not_started')} count={cnt.not_started} />
-          <FilterBtn label="მიმდინარე"          active={filter === 'in_progress'} onClick={() => setFilter('in_progress')} count={cnt.in_progress} />
-          <FilterBtn label="დასრულებული"        active={filter === 'completed'}   onClick={() => setFilter('completed')} count={cnt.completed} dot="var(--done)" />
-          <FilterBtn label="ვადაგადაცილებული"   active={filter === 'overdue'}     onClick={() => setFilter('overdue')} count={cnt.overdue} dot="var(--stuck)" />
-        </div>
-        {/* Sort */}
-        <div className="seg" style={{ flexWrap: 'wrap' }}>
-          <FilterBtn label="პრიორიტეტით"           active={sortBy === 'priority'} onClick={() => setSortBy('priority')} />
-          <FilterBtn label="ვადით"                 active={sortBy === 'due'}      onClick={() => setSortBy('due')} />
-          <FilterBtn label="შესრულების პროგრესით"  active={sortBy === 'progress'} onClick={() => setSortBy('progress')} />
-        </div>
+        {/* Filter dropdown */}
+        <select value={filter} onChange={e => setFilter(e.target.value)} style={dropStyle}>
+          <option value="all">ყველა</option>
+          <option value="not_started">დაუწყებელი ({cnt.not_started})</option>
+          <option value="in_progress">მიმდინარე ({cnt.in_progress})</option>
+          <option value="completed">დასრულებული ({cnt.completed})</option>
+          <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
+        </select>
+        {/* Sort dropdown */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={dropStyle}>
+          <option value="priority">↑ პრიორიტეტით</option>
+          <option value="due">↑ ვადით</option>
+          <option value="progress">↑ შესრულების პროგრესით</option>
+        </select>
       </div>
 
 
@@ -280,6 +280,12 @@ export function TagChip({ tag, onRemove }: { tag: { id: string; name: string; co
       )}
     </span>
   )
+}
+
+const dropStyle: React.CSSProperties = {
+  fontSize: 13, fontWeight: 500, color: 'var(--ink)', background: 'var(--surface)',
+  border: '1px solid var(--line)', borderRadius: 9, padding: '8px 12px', cursor: 'pointer',
+  fontFamily: 'var(--font-noto-geo),"Noto Sans Georgian",sans-serif',
 }
 
 /* ── Filter button with optional count badge ──────────────────────── */
