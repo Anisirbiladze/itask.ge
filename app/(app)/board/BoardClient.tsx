@@ -64,9 +64,10 @@ export default function BoardClient({
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   // Filter/sort state is local — instant, no server round-trips
-  const [groupBy, setGroupBy] = useState<'all' | 'person'>('all')
-  const [filter,  setFilter]  = useState('all')
-  const [sortBy,  setSortBy]  = useState<'priority' | 'due' | 'progress'>('priority')
+  const [groupBy,        setGroupBy]        = useState<'all' | 'person'>('all')
+  const [filter,         setFilter]         = useState('all')
+  const [sortBy,         setSortBy]         = useState<'priority' | 'due' | 'progress'>('priority')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
 
   const refetch = useCallback(async () => {
     const res = await fetch('/api/tasks')
@@ -110,6 +111,11 @@ export default function BoardClient({
         result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
     }
 
+    // Assignee filter
+    if (assigneeFilter !== 'all') {
+      result = result.filter(t => t.assigneeId === assigneeFilter)
+    }
+
     // Sort
     result = [...result].sort((a, b) => {
       if (sortBy === 'priority') {
@@ -130,7 +136,7 @@ export default function BoardClient({
     })
 
     return result
-  }, [tasks, filter, sortBy])
+  }, [tasks, filter, sortBy, assigneeFilter])
 
   const augmented: Task[] = useMemo(() => filteredTasks.map(t => ({
     ...t,
@@ -218,6 +224,13 @@ export default function BoardClient({
           <option value="in_progress">მიმდინარე ({cnt.in_progress})</option>
           <option value="completed">დასრულებული ({cnt.completed})</option>
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
+        </select>
+        {/* Assignee filter dropdown */}
+        <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
+          <option value="all">ყველა თანამშრომელი</option>
+          {users.map(u => (
+            <option key={u.id} value={u.id}>{u.displayName}</option>
+          ))}
         </select>
         {/* Sort dropdown */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value as 'priority' | 'due' | 'progress')} style={dropStyle}>
