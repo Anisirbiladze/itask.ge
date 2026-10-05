@@ -178,6 +178,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.companyId !== undefined) updates.companyId = body.companyId || null
   }
 
+  // Add image (any authenticated user)
+  if (body.addImageUrl) {
+    const count = await prisma.taskImage.count({ where: { taskId: id } })
+    if (count < 3) {
+      await prisma.taskImage.create({ data: { taskId: id, url: body.addImageUrl } })
+    }
+  }
+
+  // Add link (any authenticated user)
+  if (body.addLink?.url) {
+    await prisma.taskLink.create({ data: { taskId: id, url: body.addLink.url, label: body.addLink.label ?? null } })
+  }
+
+  // Remove image (any authenticated user — they can remove their own uploads)
+  if (body.removeImageId) {
+    await prisma.taskImage.delete({ where: { id: body.removeImageId } })
+  }
+
+  // Remove link (any authenticated user)
+  if (body.removeLinkId) {
+    await prisma.taskLink.delete({ where: { id: body.removeLinkId } })
+  }
+
   // Tag assignment (any authenticated user can tag)
   if (Array.isArray(body.tagIds)) {
     await prisma.taskTag.deleteMany({ where: { taskId: id } })

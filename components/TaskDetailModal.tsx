@@ -95,10 +95,56 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [deleting, setDeleting] = useState(false)
   const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([])
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
+  const [addingLink, setAddingLink] = useState(false)
+  const [linkInput, setLinkInput] = useState('')
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const imgInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/tags').then(r => r.json()).then(setAllTags).catch(() => {})
   }, [])
+
+  async function handleImageUpload(file: File) {
+    if (!task) return
+    setUploadingImg(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('taskId', task.id)
+    await fetch('/api/upload', { method: 'POST', body: fd })
+    setUploadingImg(false)
+    load(false)
+  }
+
+  async function handleAddLink() {
+    const url = linkInput.trim()
+    if (!url) return
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ addLink: { url } }),
+    })
+    setLinkInput('')
+    setAddingLink(false)
+    load(false)
+  }
+
+  async function handleRemoveImage(imageId: string) {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ removeImageId: imageId }),
+    })
+    load(false)
+  }
+
+  async function handleRemoveLink(linkId: string) {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ removeLinkId: linkId }),
+    })
+    load(false)
+  }
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true)
@@ -359,30 +405,52 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           {task.images.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 10 }}>
               {task.images.map(img => (
-                <a key={img.id} href={img.url} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />
-                </a>
+                <div key={img.id} style={{ position: 'relative' }}>
+                  <a href={img.url} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', display: 'block' }} />
+                  </a>
+                  <button onClick={() => handleRemoveImage(img.id)}
+                    style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: 'rgba(0,0,0,.55)', border: 0, color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                </div>
               ))}
             </div>
           )}
           {task.links.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               {task.links.map(lnk => (
-                <a key={lnk.id} href={lnk.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: '#1C6FD0', fontSize: 13.5, marginBottom: 4 }}>
-                  🔗 {lnk.label ?? lnk.url}
-                </a>
+                <div key={lnk.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <a href={lnk.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1C6FD0', fontSize: 13.5, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    🔗 {lnk.label ?? lnk.url}
+                  </a>
+                  <button onClick={() => handleRemoveLink(lnk.id)}
+                    style={{ background: 'none', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+                </div>
               ))}
             </div>
           )}
+          {addingLink && (
+            <div style={{ display: 'flex', gap: 7, marginBottom: 10 }}>
+              <input autoFocus type="url" value={linkInput} onChange={e => setLinkInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddLink(); if (e.key === 'Escape') { setAddingLink(false); setLinkInput('') } }}
+                placeholder="https://"
+                style={{ flex: 1, fontSize: 13, padding: '8px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)' }} />
+              <button onClick={handleAddLink} style={{ padding: '8px 14px', borderRadius: 9, background: 'var(--accent)', color: '#fff', border: 0, fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>+</button>
+              <button onClick={() => { setAddingLink(false); setLinkInput('') }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>✕</button>
+            </div>
+          )}
+          <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
           <div style={{ display: 'flex', gap: 9 }}>
             {task.images.length < 3 && (
-              <button style={{ flex: 1, fontSize: 13.5, color: 'var(--muted)', border: '1px dashed var(--line)', background: 'none', borderRadius: 9, padding: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44 }}>
+              <button disabled={uploadingImg} onClick={() => imgInputRef.current?.click()}
+                style={{ flex: 1, fontSize: 13.5, color: 'var(--muted)', border: '1px dashed var(--line)', background: 'none', borderRadius: 9, padding: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44, opacity: uploadingImg ? 0.6 : 1 }}>
                 <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                {t('task.add_image')}
+                {uploadingImg ? '...' : t('task.add_image')}
               </button>
             )}
-            <button style={{ flex: 1, fontSize: 13.5, color: 'var(--muted)', border: '1px dashed var(--line)', background: 'none', borderRadius: 9, padding: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44 }}>
+            <button onClick={() => setAddingLink(v => !v)}
+              style={{ flex: 1, fontSize: 13.5, color: addingLink ? 'var(--accent)' : 'var(--muted)', border: `1px dashed ${addingLink ? 'var(--accent)' : 'var(--line)'}`, background: 'none', borderRadius: 9, padding: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44 }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>
               {t('task.add_link')}
             </button>
