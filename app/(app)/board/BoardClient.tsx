@@ -9,6 +9,7 @@ import { isLate } from '@/lib/utils'
 export interface Task {
   id: string
   title: string
+  description?: string | null
   companyId: string | null
   assigneeId: string | null
   status: string

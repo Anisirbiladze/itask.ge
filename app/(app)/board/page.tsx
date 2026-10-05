@@ -55,7 +55,8 @@ export default async function BoardPage() {
     const total = t.checklistItems?.length ?? 0
     const done = t.checklistItems?.filter(c => c.done).length ?? 0
     return {
-      id: t.id, title: t.title, companyId: t.companyId, assigneeId: t.assigneeId,
+      id: t.id, title: t.title, description: t.description,
+      companyId: t.companyId, assigneeId: t.assigneeId,
       status: t.status, computedStatus, waitingHours, priority: t.priority,
       dueAt: t.dueAt?.toISOString() ?? null, originalDueAt: t.originalDueAt?.toISOString() ?? null,
       createdAt: t.createdAt.toISOString(),
