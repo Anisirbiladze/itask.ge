@@ -27,7 +27,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const users = companyId ? allUsers.filter(u => u.companyIds.includes(companyId)) : allUsers
+  const users = allUsers
 
   useEffect(() => {
     if (assigneeId && !users.find(u => u.id === assigneeId)) setAssigneeId('')
