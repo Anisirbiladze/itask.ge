@@ -120,6 +120,15 @@ export default function BoardClient({
         result = result.filter(t => t.status === 'COMPLETED'); break
       case 'overdue':
         result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
+      case 'today': {
+        const todayStr = now.toLocaleDateString('sv')  // 'YYYY-MM-DD' in local tz
+        result = result.filter(t =>
+          t.dueAt &&
+          new Date(t.dueAt).toLocaleDateString('sv') === todayStr &&
+          t.status !== 'COMPLETED' &&
+          t.assigneeId === me?.id
+        ); break
+      }
     }
 
     // Assignee filter
@@ -192,12 +201,16 @@ export default function BoardClient({
   const companyTasks = tasks
   const now = new Date()
 
-  const cnt = useMemo(() => ({
-    not_started: companyTasks.filter(t => t.status === 'NOT_STARTED').length,
-    in_progress: companyTasks.filter(t => t.status === 'IN_PROGRESS').length,
-    completed:   companyTasks.filter(t => t.status === 'COMPLETED').length,
-    overdue:     companyTasks.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED').length,
-  }), [companyTasks])
+  const cnt = useMemo(() => {
+    const todayStr = now.toLocaleDateString('sv')
+    return {
+      not_started: companyTasks.filter(t => t.status === 'NOT_STARTED').length,
+      in_progress: companyTasks.filter(t => t.status === 'IN_PROGRESS').length,
+      completed:   companyTasks.filter(t => t.status === 'COMPLETED').length,
+      overdue:     companyTasks.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED').length,
+      today:       companyTasks.filter(t => t.dueAt && new Date(t.dueAt).toLocaleDateString('sv') === todayStr && t.status !== 'COMPLETED' && t.assigneeId === me?.id).length,
+    }
+  }, [companyTasks, me?.id])
 
   const allOpen        = augmented.filter(t => t.status !== 'COMPLETED')
   const withDue        = companyTasks.filter(t => t.dueAt && t.status !== 'COMPLETED')
@@ -219,6 +232,9 @@ export default function BoardClient({
         <button className={`stat-item${filter === 'completed' ? ' active' : ''}`} onClick={() => setFilter(filter === 'completed' ? 'all' : 'completed')}>
           <b>{cnt.completed}</b><span>დასრულებული</span>
         </button>
+        <button className={`stat-item${cnt.today > 0 ? ' hot' : ''}${filter === 'today' ? ' active' : ''}`} onClick={() => setFilter(filter === 'today' ? 'all' : 'today')}>
+          <b>{cnt.today}</b><span>დღეს ჩემი</span>
+        </button>
       </div>
 
       {/* Filter + sort bar */}
@@ -235,6 +251,7 @@ export default function BoardClient({
           <option value="in_progress">მიმდინარე ({cnt.in_progress})</option>
           <option value="completed">დასრულებული ({cnt.completed})</option>
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
+          <option value="today">დღეს ჩემი ({cnt.today})</option>
         </select>
         {/* Assignee filter dropdown */}
         <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
