@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/components/AppShell'
 
-function todayString() {
+function nowString() {
   const d = new Date()
   const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  const hr = String(d.getHours()).padStart(2, '0')
+  const mn = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${mo}-${day}T${hr}:${mn}`
 }
 
 export default function NewTaskModal({ onClose, onCreated }: {
@@ -20,7 +22,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
   // Auto-select the first (only) company — no picker needed
   const companyId = companies[0]?.id ?? ''
   const [assigneeId, setAssigneeId] = useState('')
-  const [dueAt, setDueAt] = useState(todayString)
+  const [dueAt, setDueAt] = useState(nowString)
   const [priority, setPriority] = useState(2)
   const [images, setImages] = useState<File[]>([])
   const [linkUrl, setLinkUrl] = useState('')
@@ -164,9 +166,9 @@ export default function NewTaskModal({ onClose, onCreated }: {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 14 }}>
               <div>
                 <label style={lblStyle}>{t('new_task.label_due')}</label>
-                <input type="date" value={dueAt} onChange={e => setDueAt(e.target.value)}
+                <input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)}
                   onClick={e => { try { (e.target as HTMLInputElement).showPicker() } catch {} }}
-                  style={{ width: '100%', fontSize: 14.5, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', cursor: 'pointer' }} />
+                  style={{ width: '100%', fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', cursor: 'pointer' }} />
               </div>
               <div>
                 <label style={lblStyle}>{t('new_task.label_priority')}</label>
