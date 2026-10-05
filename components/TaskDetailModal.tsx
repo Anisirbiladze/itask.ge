@@ -99,6 +99,9 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [linkInput, setLinkInput] = useState('')
   const [uploadingImg, setUploadingImg] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
+  const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; author: { id: string; displayName: string; photoUrl: string | null } }[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
 
 
 
@@ -146,8 +149,12 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true)
-    const res = await fetch(`/api/tasks/${taskId}`)
-    if (res.ok) setTask(await res.json())
+    const [taskRes, commentsRes] = await Promise.all([
+      fetch(`/api/tasks/${taskId}`),
+      fetch(`/api/tasks/${taskId}/comments`),
+    ])
+    if (taskRes.ok) setTask(await taskRes.json())
+    if (commentsRes.ok) setComments(await commentsRes.json())
     setLoading(false)
   }
 
@@ -424,6 +431,62 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
               style={{ flex: 1, fontSize: 13.5, color: addingLink ? 'var(--accent)' : 'var(--muted)', border: `1px dashed ${addingLink ? 'var(--accent)' : 'var(--line)'}`, background: 'none', borderRadius: 9, padding: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44 }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>
               {t('task.add_link')}
+            </button>
+          </div>
+        </div>
+
+        {/* Comments */}
+        <div style={{ background: 'linear-gradient(135deg,#EEF2FF 0%,#F0F9FF 100%)', borderBottom: '1px solid var(--line-soft)', padding: '16px 18px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#4338CA', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>💬 კომენტარები</div>
+          {comments.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 12 }}>
+              {comments.map(c => (
+                <div key={c.id} style={{ background: '#fff', border: '1px solid #C7D2FE', borderRadius: 10, padding: '10px 13px', position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                    <Avatar name={c.author.displayName} size={24} photoUrl={c.author.photoUrl} />
+                    <span style={{ fontWeight: 600, fontSize: 12.5, color: '#312E81' }}>{c.author.displayName}</span>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>{new Date(c.createdAt).toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    {(me?.id === c.author.id || me?.role === 'CEO') && (
+                      <button onClick={() => {
+                        fetch(`/api/tasks/${taskId}/comments`, { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ commentId: c.id }) })
+                        setComments(prev => prev.filter(x => x.id !== c.id))
+                      }} style={{ background: 'none', border: 0, cursor: 'pointer', color: '#9CA3AF', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 13.5, color: '#1E1B4B', lineHeight: 1.5, margin: 0 }}>{c.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <textarea
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              onKeyDown={async e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (!commentText.trim() || postingComment) return
+                  setPostingComment(true)
+                  const res = await fetch(`/api/tasks/${taskId}/comments`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: commentText.trim() }) })
+                  if (res.ok) { const nc = await res.json(); setComments(prev => [...prev, nc]); setCommentText('') }
+                  setPostingComment(false)
+                }
+              }}
+              placeholder="კომენტარი დაწერეთ… (Enter — გაგზავნა)"
+              rows={2}
+              style={{ flex: 1, fontSize: 13.5, border: '1px solid #A5B4FC', borderRadius: 9, padding: '9px 12px', background: '#fff', resize: 'none', color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }}
+            />
+            <button
+              disabled={!commentText.trim() || postingComment}
+              onClick={async () => {
+                if (!commentText.trim() || postingComment) return
+                setPostingComment(true)
+                const res = await fetch(`/api/tasks/${taskId}/comments`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: commentText.trim() }) })
+                if (res.ok) { const nc = await res.json(); setComments(prev => [...prev, nc]); setCommentText('') }
+                setPostingComment(false)
+              }}
+              style={{ flexShrink: 0, padding: '9px 15px', borderRadius: 9, border: 'none', background: '#4F46E5', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (!commentText.trim() || postingComment) ? 0.5 : 1, minHeight: 42 }}>
+              გაგზავნა
             </button>
           </div>
         </div>
