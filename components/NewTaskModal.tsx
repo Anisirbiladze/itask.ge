@@ -2,14 +2,16 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/components/AppShell'
 
-function nowString() {
+function nowParts() {
   const d = new Date()
   const y = d.getFullYear()
   const mo = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  const hr = String(d.getHours()).padStart(2, '0')
-  const mn = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${mo}-${day}T${hr}:${mn}`
+  return {
+    date: `${y}-${mo}-${day}`,
+    hour: d.getHours(),
+    minute: d.getMinutes(),
+  }
 }
 
 export default function NewTaskModal({ onClose, onCreated }: {
@@ -22,7 +24,10 @@ export default function NewTaskModal({ onClose, onCreated }: {
   // Auto-select the first (only) company — no picker needed
   const companyId = companies[0]?.id ?? ''
   const [assigneeId, setAssigneeId] = useState('')
-  const [dueAt, setDueAt] = useState(nowString)
+  const _now = nowParts()
+  const [dueDate, setDueDate] = useState(_now.date)
+  const [dueHour, setDueHour] = useState(_now.hour)
+  const [dueMinute, setDueMinute] = useState(_now.minute)
   const [priority, setPriority] = useState(2)
   const [images, setImages] = useState<File[]>([])
   const [linkUrl, setLinkUrl] = useState('')
@@ -60,7 +65,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
           description: description.trim() || null,
           companyId: companyId || null,
           assigneeId: assigneeId || null,
-          dueAt: dueAt || null,
+          dueAt: dueDate ? `${dueDate}T${String(dueHour).padStart(2,'0')}:${String(dueMinute).padStart(2,'0')}` : null,
           priority,
           linkUrl: linkUrl.trim() || null,
         }),
@@ -166,9 +171,24 @@ export default function NewTaskModal({ onClose, onCreated }: {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 14 }}>
               <div>
                 <label style={lblStyle}>{t('new_task.label_due')}</label>
-                <input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)}
-                  onClick={e => { try { (e.target as HTMLInputElement).showPicker() } catch {} }}
-                  style={{ width: '100%', fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 12px', cursor: 'pointer' }} />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                    onClick={e => { try { (e.target as HTMLInputElement).showPicker() } catch {} }}
+                    style={{ flex: 1, fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 10px', cursor: 'pointer', minWidth: 0 }} />
+                  <select value={dueHour} onChange={e => setDueHour(Number(e.target.value))}
+                    style={{ fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 6px', cursor: 'pointer' }}>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                    ))}
+                  </select>
+                  <span style={{ color: 'var(--ink-3)' }}>:</span>
+                  <select value={dueMinute} onChange={e => setDueMinute(Number(e.target.value))}
+                    style={{ fontSize: 13, color: 'var(--ink)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: '10px 6px', cursor: 'pointer' }}>
+                    {Array.from({ length: 60 }, (_, i) => (
+                      <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
                 <label style={lblStyle}>{t('new_task.label_priority')}</label>
