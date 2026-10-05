@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useApp, Avatar } from '@/components/AppShell'
 import TaskDetailModal from '@/components/TaskDetailModal'
@@ -389,7 +390,8 @@ function StatusBtn({ task, onStatusChange, me }: {
   me: { id: string; role: string } | null
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   const displayStatus = task.computedStatus === 'WAITING' ? 'WAITING' : task.status
   const { cls, label } = ST_META[displayStatus] ?? ST_META.NOT_STARTED
@@ -397,26 +399,41 @@ function StatusBtn({ task, onStatusChange, me }: {
 
   const availableStatuses = me?.role === 'CEO' ? CEO_STATUSES : MEMBER_STATUSES
 
+  function openMenu(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    setOpen(o => !o)
+  }
+
   useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      const menu = document.getElementById('st-portal-menu')
+      if (menu && !menu.contains(e.target as Node) && e.target !== btnRef.current) setOpen(false)
     }
-    if (open) document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
   return (
-    <div className="st-picker" ref={ref}>
+    <div className="st-picker">
       <button
+        ref={btnRef}
         className={`st-btn ${cls}`}
         type="button"
-        onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+        onClick={openMenu}
         style={{ width: '100%', minHeight: 50, borderRadius: 9 }}
       >
         {waitLabel}
       </button>
-      {open && (
-        <div className="st-menu">
+      {open && menuPos && createPortal(
+        <div
+          id="st-portal-menu"
+          className="st-menu"
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+        >
           {availableStatuses.map(s => {
             const m = ST_META[s]
             return (
@@ -426,7 +443,8 @@ function StatusBtn({ task, onStatusChange, me }: {
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
