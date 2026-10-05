@@ -74,6 +74,16 @@ export default function BoardClient({
     if (res.ok) setTasks(await res.json())
   }, [])
 
+  // Add newly created tasks instantly without a refresh
+  useEffect(() => {
+    function onTaskCreated(e: Event) {
+      const newTask = (e as CustomEvent).detail
+      if (newTask?.id) setTasks(prev => [newTask, ...prev])
+    }
+    window.addEventListener('task-created', onTaskCreated)
+    return () => window.removeEventListener('task-created', onTaskCreated)
+  }, [])
+
   async function changeStatus(taskId: string, newStatus: string, optimisticTask: Task) {
     // Optimistic update
     setTasks(prev => prev.map(t => t.id === taskId

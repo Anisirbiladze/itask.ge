@@ -81,6 +81,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
         await fetch('/api/upload', { method: 'POST', body: fd })
       }
 
+      window.dispatchEvent(new CustomEvent('task-created', { detail: data }))
       onCreated()
     } catch {
       setError('Network error. Please try again.')
