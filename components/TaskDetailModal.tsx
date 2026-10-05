@@ -42,7 +42,7 @@ function buildPartialTask(d: Record<string, unknown>): TaskDetail {
   return {
     id: d.id as string,
     title: d.title as string,
-    description: null,
+    description: (d.description as string | null) ?? null,
     status: d.status as string,
     computedStatus: d.computedStatus as string,
     waitingHours: (d.waitingHours as number | null) ?? null,
