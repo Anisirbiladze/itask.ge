@@ -271,7 +271,6 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
         <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--line-soft)', position: 'relative' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 13, right: 13, width: 30, height: 30, borderRadius: 8, border: 0, background: '#F1F4F6', color: 'var(--muted)', cursor: 'pointer', fontSize: 17, lineHeight: 1 }}>×</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9, flexWrap: 'wrap' }}>
-            {task.company && <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 5, color: '#fff', background: task.company.color }}>{task.company.name}</span>}
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>
               {t('task.created_by')} {formatDateFull(task.createdAt)}{task.creator ? ` by ${task.creator.displayName}` : ''}
             </span>
