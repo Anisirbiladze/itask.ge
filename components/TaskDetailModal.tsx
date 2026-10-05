@@ -93,16 +93,12 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [editAssigneeId, setEditAssigneeId] = useState<string>('')
   const [editCompanyId, setEditCompanyId] = useState<string>('')
   const [deleting, setDeleting] = useState(false)
-  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([])
-  const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [addingLink, setAddingLink] = useState(false)
   const [linkInput, setLinkInput] = useState('')
   const [uploadingImg, setUploadingImg] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    fetch('/api/tags').then(r => r.json()).then(setAllTags).catch(() => {})
-  }, [])
+
 
   async function handleImageUpload(file: File) {
     if (!task) return
@@ -294,46 +290,6 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
             </button>
           </div>
         )}
-
-        {/* Tags row */}
-        <div style={{ padding: '11px 18px', borderBottom: '1px solid var(--line-soft)', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          {(task.tags ?? []).map(tag => (
-            <TagPill key={tag.id} tag={tag} onRemove={async () => {
-              const next = (task.tags ?? []).filter(t => t.id !== tag.id)
-              setTask(prev => prev ? { ...prev, tags: next } : prev)
-              await fetch(`/api/tasks/${taskId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tagIds: next.map(t => t.id) }),
-              })
-            }} />
-          ))}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setTagPickerOpen(o => !o)}
-              style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: '1px dashed var(--line)', borderRadius: 999, padding: '3px 10px', cursor: 'pointer' }}>
-              + ტეგი
-            </button>
-            {tagPickerOpen && allTags.length > 0 && (
-              <TagDropdown
-                allTags={allTags}
-                currentTagIds={(task.tags ?? []).map(t => t.id)}
-                onToggle={async (tagId) => {
-                  const cur = (task.tags ?? []).map(t => t.id)
-                  const next = cur.includes(tagId) ? cur.filter(id => id !== tagId) : [...cur, tagId]
-                  const nextTags = allTags.filter(t => next.includes(t.id))
-                  setTask(prev => prev ? { ...prev, tags: nextTags } : prev)
-                  await fetch(`/api/tasks/${taskId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tagIds: next }),
-                  })
-                }}
-                onClose={() => setTagPickerOpen(false)}
-              />
-            )}
-          </div>
-        </div>
 
         {/* Dates row */}
         <div style={{ padding: '15px 18px', borderBottom: '1px solid var(--line-soft)' }}>
@@ -590,57 +546,7 @@ function statusLabel(s: string | null) {
   return m[s ?? ''] ?? s ?? '?'
 }
 
-/* ── Tag pill ──────────────────────────────────────────────────────── */
-function TagPill({ tag, onRemove }: { tag: { id: string; name: string; color: string }; onRemove?: () => void }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
-      background: `${tag.color}22`, color: tag.color, border: `1px solid ${tag.color}55`,
-      fontFamily: 'var(--font-noto-geo),"Noto Sans Georgian",sans-serif',
-    }}>
-      {tag.name}
-      {onRemove && (
-        <button onClick={onRemove} style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', fontSize: 13, opacity: 0.7 }}>×</button>
-      )}
-    </span>
-  )
-}
 
-/* ── Tag dropdown ──────────────────────────────────────────────────── */
-function TagDropdown({ allTags, currentTagIds, onToggle, onClose }: {
-  allTags: { id: string; name: string; color: string }[]
-  currentTagIds: string[]
-  onToggle: (tagId: string) => void
-  onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [onClose])
-
-  return (
-    <div ref={ref} style={{
-      position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 210,
-      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11,
-      boxShadow: '0 8px 28px rgba(18,24,31,.16)', padding: 5, minWidth: 180,
-      animation: 'menu-in .15s var(--ease)',
-    }}>
-      {allTags.map(tag => {
-        const selected = currentTagIds.includes(tag.id)
-        return (
-          <button key={tag.id} onClick={() => onToggle(tag.id)} className="st-opt">
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: tag.color, flexShrink: 0 }} />
-            {tag.name}
-            {selected && <span style={{ marginLeft: 'auto', fontSize: 13, color: tag.color }}>✓</span>}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 /* ── Status picker for modal ──────────────────────────────────────── */
 const ST_MODAL: Record<string, { label: string; dot: string; bg: string }> = {
