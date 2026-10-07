@@ -183,6 +183,8 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   }
 
   async function changeStatus(newStatus: string) {
+    const prev = task
+    setTask(t => t ? { ...t, status: newStatus, computedStatus: newStatus } : t)
     setSaving(true)
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
@@ -190,8 +192,11 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
       body: JSON.stringify({ status: newStatus }),
     })
     setSaving(false)
-    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
-    load(false); onUpdated()
+    if (!res.ok) {
+      setTask(prev)
+      const d = await res.json(); setError(d.error ?? 'Failed'); return
+    }
+    onUpdated()
   }
 
   function openEdit() {
@@ -274,9 +279,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const datesMatch = task.originalDueAt === task.dueAt ||
     (task.originalDueAt && task.dueAt && new Date(task.originalDueAt).toISOString() === new Date(task.dueAt).toISOString())
   const canChangeDue = me?.role === 'CEO' || true // checked server-side
-  const memberStatuses = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW']
-  const ceoStatuses    = ['NOT_STARTED', 'IN_PROGRESS', 'TO_REVIEW', 'TO_APPROVE', 'COMPLETED']
-  const availableStatuses = me?.role === 'CEO' ? ceoStatuses : memberStatuses
+  const availableStatuses = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
 
   return (
     <Overlay onClose={onClose}>
