@@ -102,8 +102,13 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [linkInput, setLinkInput] = useState('')
   const [uploadingImg, setUploadingImg] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
-  const [comments, setComments] = useState<CachedComment[]>(() => _commentCache.get(taskId) ?? [])
-  const [commentsLoading, setCommentsLoading] = useState(!_commentCache.has(taskId))
+  const initialComments = (initialData?.comments as CachedComment[] | undefined) ?? []
+  const [comments, setComments] = useState<CachedComment[]>(() => {
+    if (_commentCache.has(taskId)) return _commentCache.get(taskId)!
+    if (initialComments.length > 0) { _commentCache.set(taskId, initialComments); return initialComments }
+    return []
+  })
+  const [commentsLoading, setCommentsLoading] = useState(() => !_commentCache.has(taskId) && initialComments.length === 0)
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
 
@@ -170,7 +175,12 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   }
 
   useEffect(() => { load(!initialData) }, [taskId])
-  useEffect(() => { loadComments() }, [taskId])
+  // Skip fetch if we already have comments from initialData or cache
+  useEffect(() => {
+    if (!_commentCache.has(taskId) && (!initialData?.comments || (initialData.comments as CachedComment[]).length === 0)) {
+      loadComments()
+    }
+  }, [taskId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

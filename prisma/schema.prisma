@@ -64,6 +64,7 @@ model User {
   photoUrl      String?
   archived      Boolean  @default(false)
   createdAt     DateTime @default(now())
+  comments      TaskComment[]
 }
 
 model UserCompany {
@@ -109,6 +110,7 @@ model TaskComment {
   content   String   @db.Text
   createdAt DateTime @default(now())
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
 }
 
 model Tag {
