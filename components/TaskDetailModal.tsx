@@ -103,6 +103,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   const [uploadingImg, setUploadingImg] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
   const [comments, setComments] = useState<CachedComment[]>(() => _commentCache.get(taskId) ?? [])
+  const [commentsLoading, setCommentsLoading] = useState(!_commentCache.has(taskId))
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
 
@@ -152,20 +153,24 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true)
-    const [taskRes, commentsRes] = await Promise.all([
-      fetch(`/api/tasks/${taskId}`),
-      fetch(`/api/tasks/${taskId}/comments`),
-    ])
-    if (taskRes.ok) setTask(await taskRes.json())
-    if (commentsRes.ok) {
-      const data: CachedComment[] = await commentsRes.json()
-      _commentCache.set(taskId, data)
-      setComments(data)
-    }
+    const res = await fetch(`/api/tasks/${taskId}`)
+    if (res.ok) setTask(await res.json())
     setLoading(false)
   }
 
+  async function loadComments() {
+    setCommentsLoading(true)
+    const res = await fetch(`/api/tasks/${taskId}/comments`)
+    if (res.ok) {
+      const data: CachedComment[] = await res.json()
+      _commentCache.set(taskId, data)
+      setComments(data)
+    }
+    setCommentsLoading(false)
+  }
+
   useEffect(() => { load(!initialData) }, [taskId])
+  useEffect(() => { loadComments() }, [taskId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -447,7 +452,10 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
         {/* Comments */}
         <div style={{ background: 'linear-gradient(135deg,#EEF2FF 0%,#F0F9FF 100%)', borderBottom: '1px solid var(--line-soft)', padding: '16px 18px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#4338CA', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>💬 კომენტარები</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#4338CA', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+            💬 კომენტარები
+            {commentsLoading && <span style={{ fontSize: 11, fontWeight: 400, color: '#818CF8', marginLeft: 8 }}>იტვირთება…</span>}
+          </div>
           {comments.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 12 }}>
               {comments.map(c => (
