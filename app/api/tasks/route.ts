@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
     include: {
       checklistItems: { select: { done: true } },
       tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+      _count: { select: { comments: true } },
     },
   })
 
@@ -73,7 +74,8 @@ export async function GET(req: NextRequest) {
     const checklistPct = total > 0 ? Math.round((done / total) * 100) : null
 
     const tags = (t.tags ?? []).map((tt: { tag: { id: string; name: string; color: string } }) => tt.tag)
-    return { ...t, tags, computedStatus, waitingHours, checklistPct, checklistTotal: total, checklistDone: done }
+    const commentCount = t._count?.comments ?? 0
+    return { ...t, tags, computedStatus, waitingHours, checklistPct, checklistTotal: total, checklistDone: done, commentCount }
   })
 
   // Filter stuck
