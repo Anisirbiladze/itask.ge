@@ -564,7 +564,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
         )}
 
         {/* CEO edit form */}
-        {editing && me?.role === 'CEO' || me?.role === 'ADMIN' && (
+        {editing && (me?.role === 'CEO' || me?.role === 'ADMIN') && (
           <form onSubmit={saveEdit} style={{ padding: '15px 18px', borderTop: '2px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 11 }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('task.edit_title')}</div>
             <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required placeholder={t('task.field_title')}
@@ -607,7 +607,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-          {me?.role === 'CEO' || me?.role === 'ADMIN' && !editing && (
+          {(me?.role === 'CEO' || me?.role === 'ADMIN') && !editing && (
             <button onClick={openEdit} style={actStyle}>{t('task.btn_edit')}</button>
           )}
           <button onClick={() => {
@@ -617,7 +617,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           }} style={actStyle}>
             {t('task.btn_change_due')}
           </button>
-          {me?.role === 'CEO' || me?.role === 'ADMIN' && (
+          {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
             <button onClick={deleteTask} disabled={deleting}
               style={{ ...actStyle, flex: 'none', color: 'var(--stuck)', borderColor: 'var(--stuck)' }}>
               {deleting ? '…' : t('task.btn_delete')}

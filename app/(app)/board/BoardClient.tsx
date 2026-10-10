@@ -238,7 +238,7 @@ export default function BoardClient({
       {/* Filter + sort bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
         {/* CEO-only: group by person toggle */}
-        {me?.role === 'CEO' || me?.role === 'ADMIN' && (
+        {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
           <div className="seg">
             <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
             <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
@@ -258,7 +258,7 @@ export default function BoardClient({
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
         </select>
         {/* CEO-only: assignee filter dropdown */}
-        {me?.role === 'CEO' || me?.role === 'ADMIN' && (
+        {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
           <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
             <option value="all">ყველა თანამშრომელი</option>
             {users.map(u => (
