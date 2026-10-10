@@ -14,27 +14,16 @@ export async function GET(req: NextRequest) {
   let where: Record<string, unknown> = { archived: false }
   let settings: Awaited<ReturnType<typeof prisma.setting.findUnique>> = null
 
-  if (session.role === 'MEMBER') {
-    const [me, s] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session.userId } }),
-      prisma.setting.findUnique({ where: { id: 'singleton' } }),
-    ])
-    settings = s
-    if (s?.membersSeeFunctionPeers && me) {
-      const peers = await prisma.user.findMany({
-        where: { functionGroup: me.functionGroup, archived: false, id: { not: session.userId } },
-        select: { id: true },
-      })
-      where = { ...where, OR: [{ assigneeId: session.userId }, { assigneeId: { in: peers.map((p: { id: string }) => p.id) } }] }
-    } else {
-      where = { ...where, assigneeId: session.userId }
-    }
-  } else {
-    settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
-  }
+  settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
 
-  if (companyId) where.companyId = companyId
-  if (assigneeId) where.assigneeId = assigneeId
+  if (session.role === 'MEMBER') {
+    // Members always see only their own tasks — no overrides allowed
+    where = { ...where, assigneeId: session.userId }
+  } else {
+    // CEO: optional filters from query params
+    if (companyId) where.companyId = companyId
+    if (assigneeId) where.assigneeId = assigneeId
+  }
 
   const now = new Date()
   if (filter === 'unassigned') where.assigneeId = null
