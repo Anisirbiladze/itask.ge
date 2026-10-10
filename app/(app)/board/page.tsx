@@ -9,23 +9,9 @@ export default async function BoardPage() {
   let settings: { handoffFlagHours: number | null } | null = null
 
   if (session.role === 'MEMBER' && session.userId) {
-    const [me, s] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session.userId } }),
-      prisma.setting.findUnique({ where: { id: 'singleton' } }),
-    ])
-    settings = s
-    if (s?.membersSeeFunctionPeers && me) {
-      const peers = await prisma.user.findMany({
-        where: { functionGroup: me.functionGroup, archived: false, id: { not: session.userId } },
-        select: { id: true },
-      })
-      where = { ...where, OR: [{ assigneeId: session.userId }, { assigneeId: { in: peers.map(p => p.id) } }] }
-    } else {
-      where = { ...where, assigneeId: session.userId }
-    }
-  } else {
-    settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
+    where = { ...where, assigneeId: session.userId }
   }
+  settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
 
   const [tasks, users] = await Promise.all([
     prisma.task.findMany({
