@@ -237,11 +237,13 @@ export default function BoardClient({
 
       {/* Filter + sort bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Grouping toggle */}
-        <div className="seg">
-          <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
-          <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
-        </div>
+        {/* CEO-only: group by person toggle */}
+        {me?.role === 'CEO' && (
+          <div className="seg">
+            <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
+            <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
+          </div>
+        )}
         {/* Day toggle */}
         <div className="seg">
           <button className={`seg-btn${dayFilter === 'all' ? ' on' : ''}`} onClick={() => setDayFilter('all')}>ყველა</button>
@@ -255,13 +257,15 @@ export default function BoardClient({
           <option value="completed">დასრულებული ({cnt.completed})</option>
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
         </select>
-        {/* Assignee filter dropdown */}
-        <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
-          <option value="all">ყველა თანამშრომელი</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>{u.displayName}</option>
-          ))}
-        </select>
+        {/* CEO-only: assignee filter dropdown */}
+        {me?.role === 'CEO' && (
+          <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
+            <option value="all">ყველა თანამშრომელი</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.displayName}</option>
+            ))}
+          </select>
+        )}
         {/* Sort dropdown */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value as 'priority' | 'due' | 'progress')} style={dropStyle}>
           <option value="priority">↑ პრიორიტეტით</option>
