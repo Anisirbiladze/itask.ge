@@ -283,7 +283,7 @@ export default function BoardClient({
           groupBy={groupBy}
           onRowClick={setSelectedTask}
           onStatusChange={changeStatus}
-          onAddTask={me?.role === 'CEO' || me?.role === 'ADMIN' ? () => handleAddTask() : undefined}
+          onAddTask={(me?.role === 'CEO' || me?.role === 'ADMIN') ? () => handleAddTask() : undefined}
           me={me}
           users={users}
         />
@@ -440,7 +440,7 @@ function StatusBtn({ task, onStatusChange, me }: {
   const { cls, label } = ST_META[displayStatus] ?? ST_META.NOT_STARTED
   const waitLabel = displayStatus === 'WAITING' ? `ელოდება ${task.waitingHours ?? 0}სთ` : label
 
-  const availableStatuses = me?.role === 'CEO' || me?.role === 'ADMIN' ? CEO_STATUSES : MEMBER_STATUSES
+  const availableStatuses = (me?.role === 'CEO' || me?.role === 'ADMIN') ? CEO_STATUSES : MEMBER_STATUSES
 
   function openMenu(e: React.MouseEvent) {
     e.stopPropagation()
