@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, generateTempPassword } from '@/lib/auth'
 
@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await params
@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   // Reset password
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await params

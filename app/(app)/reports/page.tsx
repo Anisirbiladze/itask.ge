@@ -1,11 +1,11 @@
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import ReportsClient from './ReportsClient'
 import { differenceInDays, subDays } from 'date-fns'
 
 export default async function ReportsPage() {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return <p style={{ color: 'var(--stuck)' }}>CEO access required.</p>
   }
 

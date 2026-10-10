@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/tags — list all tags
@@ -13,7 +13,7 @@ export async function GET() {
 // POST /api/tags — create a tag (CEO only)
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { name, color } = await req.json()
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 // DELETE /api/tags — delete a tag (CEO only)
 export async function DELETE(req: NextRequest) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await req.json()

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/task-templates — list all templates (with numeric fields)
@@ -17,7 +17,7 @@ export async function GET() {
 // POST /api/task-templates — create a template (CEO only)
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/task-templates — update a template (CEO only)
 export async function PATCH(req: NextRequest) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/task-templates — delete a template (CEO only)
 export async function DELETE(req: NextRequest) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') {
+  if (!session.userId || !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await req.json()

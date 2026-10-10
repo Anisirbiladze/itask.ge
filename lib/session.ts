@@ -3,8 +3,13 @@ import { cookies } from 'next/headers'
 
 export interface SessionData {
   userId?: string
-  role?: 'CEO' | 'MEMBER'
+  role?: 'CEO' | 'ADMIN' | 'MEMBER'
   mustChangePw?: boolean
+}
+
+/** Returns true for both CEO and ADMIN roles */
+export function isPrivileged(role?: string | null): boolean {
+  return role === 'CEO' || role === 'ADMIN'
 }
 
 const sessionOptions: SessionOptions = {

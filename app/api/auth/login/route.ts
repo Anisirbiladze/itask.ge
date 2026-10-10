@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const session = await getSession()
   session.userId = user.id
-  session.role = user.role as 'CEO' | 'MEMBER'
+  session.role = user.role as 'CEO' | 'ADMIN' | 'MEMBER'
   session.mustChangePw = user.mustChangePw
   await session.save()
 

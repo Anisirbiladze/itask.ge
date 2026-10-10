@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import BoardClient, { type Task } from './BoardClient'
 
@@ -8,7 +8,7 @@ export default async function BoardPage() {
   let where: Record<string, unknown> = { archived: false }
   let settings: { handoffFlagHours: number | null } | null = null
 
-  if (session.role === 'MEMBER' && session.userId) {
+  if (!isPrivileged(session.role) && session.userId) {
     where = { ...where, assigneeId: session.userId }
   }
   settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })

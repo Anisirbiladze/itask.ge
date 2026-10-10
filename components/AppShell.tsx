@@ -11,7 +11,7 @@ import NewTaskModal from '@/components/NewTaskModal'
 export interface Me {
   id: string
   displayName: string
-  role: 'CEO' | 'MEMBER'
+  role: 'CEO' | 'ADMIN' | 'MEMBER'
   mustChangePw: boolean
   functionGroup: string
   photoUrl?: string | null
@@ -90,7 +90,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
   }
 
   const NAV = NAV_KEYS.map(n => ({ ...n, label: t(n.tKey) }))
-  const visibleNav = NAV.filter(n => !n.ceoOnly || me?.role === 'CEO')
+  const visibleNav = NAV.filter(n => !n.ceoOnly || me?.role === 'CEO' || me?.role === 'ADMIN')
   const dateStr = format(new Date(), 'EEEE, d MMMM')
 
   return (
@@ -142,7 +142,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: 13.5 }}>{dateStr}</p>
           </div>
-          {me?.role === 'CEO' && (
+          {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
             <button
               onClick={() => openNewTask()}
               className="pbtn"

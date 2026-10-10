@@ -1,3 +1,4 @@
+import { isPrivileged } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -9,7 +10,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   const session = await getSession()
-  if (session.role !== 'CEO') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isPrivileged(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const updates: { key: string; page: string; value: string }[] = await req.json()

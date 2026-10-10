@@ -1,3 +1,4 @@
+import { isPrivileged } from '@/lib/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
@@ -54,7 +55,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { commentId } = await req.json()
   const comment = await prisma.taskComment.findUnique({ where: { id: commentId } })
   if (!comment || comment.taskId !== taskId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (comment.authorId !== session.userId && session.role !== 'CEO') {
+  if (comment.authorId !== session.userId && !isPrivileged(session.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

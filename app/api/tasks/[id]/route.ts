@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
 type Params = { params: Promise<{ id: string }> }
@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // Status change
   if (body.status !== undefined && body.status !== task.status) {
     const restrictedStatuses = ['TO_APPROVE', 'COMPLETED']
-    if (restrictedStatuses.includes(body.status) && session.role !== 'CEO') {
+    if (restrictedStatuses.includes(body.status) && !isPrivileged(session.role)) {
       return NextResponse.json({ error: 'Only CEOs can set this status' }, { status: 403 })
     }
     const from = task.status
@@ -153,13 +153,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // Assignment (CEO only)
-  if (body.assigneeId !== undefined && session.role === 'CEO') {
+  if (body.assigneeId !== undefined && isPrivileged(session.role)) {
     updates.assigneeId = body.assigneeId || null
     events.push({ type: 'ASSIGNED', toValue: body.assigneeId || null })
   }
 
   // Full edit fields — CEO only
-  if (session.role === 'CEO') {
+  if (isPrivileged(session.role)) {
     if (body.title !== undefined && body.title !== task.title) updates.title = body.title
     if (body.description !== undefined) updates.description = body.description || null
     if (body.priority !== undefined) updates.priority = Number(body.priority)
@@ -222,7 +222,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getSession()
-  if (!session.userId || session.role !== 'CEO') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session.userId || !isPrivileged(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { id } = await params
 
   await prisma.task.update({ where: { id }, data: { archived: true } })

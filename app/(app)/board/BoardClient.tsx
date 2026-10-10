@@ -238,7 +238,7 @@ export default function BoardClient({
       {/* Filter + sort bar */}
       <div style={{ display: 'flex', gap: 9, marginBottom: 26, flexWrap: 'wrap', alignItems: 'center' }}>
         {/* CEO-only: group by person toggle */}
-        {me?.role === 'CEO' && (
+        {me?.role === 'CEO' || me?.role === 'ADMIN' && (
           <div className="seg">
             <button className={`seg-btn${groupBy === 'all' ? ' on' : ''}`} onClick={() => setGroupBy('all')}>ყველა</button>
             <button className={`seg-btn${groupBy === 'person' ? ' on' : ''}`} onClick={() => setGroupBy('person')}>თანამშრომელი</button>
@@ -258,7 +258,7 @@ export default function BoardClient({
           <option value="overdue">ვადაგადაცილებული ({cnt.overdue})</option>
         </select>
         {/* CEO-only: assignee filter dropdown */}
-        {me?.role === 'CEO' && (
+        {me?.role === 'CEO' || me?.role === 'ADMIN' && (
           <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={dropStyle}>
             <option value="all">ყველა თანამშრომელი</option>
             {users.map(u => (
@@ -283,7 +283,7 @@ export default function BoardClient({
           groupBy={groupBy}
           onRowClick={setSelectedTask}
           onStatusChange={changeStatus}
-          onAddTask={me?.role === 'CEO' ? () => handleAddTask() : undefined}
+          onAddTask={me?.role === 'CEO' || me?.role === 'ADMIN' ? () => handleAddTask() : undefined}
           me={me}
           users={users}
         />
@@ -440,7 +440,7 @@ function StatusBtn({ task, onStatusChange, me }: {
   const { cls, label } = ST_META[displayStatus] ?? ST_META.NOT_STARTED
   const waitLabel = displayStatus === 'WAITING' ? `ელოდება ${task.waitingHours ?? 0}სთ` : label
 
-  const availableStatuses = me?.role === 'CEO' ? CEO_STATUSES : MEMBER_STATUSES
+  const availableStatuses = me?.role === 'CEO' || me?.role === 'ADMIN' ? CEO_STATUSES : MEMBER_STATUSES
 
   function openMenu(e: React.MouseEvent) {
     e.stopPropagation()
@@ -519,8 +519,9 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me
   const isDone = task.status === 'COMPLETED'
 
   const creator = users.find(u => u.id === task.createdById)
-  const creatorIsCeo = creator?.role === 'CEO'
-  const isSelfAssigned = !creatorIsCeo && task.createdById === task.assigneeId
+  const creatorIsCeo   = creator?.role === 'CEO'
+  const creatorIsAdmin = creator?.role === 'ADMIN'
+  const isSelfAssigned = !creatorIsCeo && !creatorIsAdmin && task.createdById === task.assigneeId
 
   return (
     <div className="board-row" style={{ animationDelay: `${delay}s`, ['--gc' as string]: groupColor }}>
@@ -534,6 +535,9 @@ function TaskRow({ task, groupBy, groupColor, onClick, delay, onStatusChange, me
         )}
         {creatorIsCeo && (
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', whiteSpace: 'nowrap', flexShrink: 0 }}>CEO</span>
+        )}
+        {creatorIsAdmin && (
+          <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0', whiteSpace: 'nowrap', flexShrink: 0 }}>Admin</span>
         )}
         {isSelfAssigned && (
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', whiteSpace: 'nowrap', flexShrink: 0 }}>საკუთარი</span>

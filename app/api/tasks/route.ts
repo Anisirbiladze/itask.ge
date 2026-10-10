@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession, isPrivileged } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -16,11 +16,11 @@ export async function GET(req: NextRequest) {
 
   settings = await prisma.setting.findUnique({ where: { id: 'singleton' } })
 
-  if (session.role === 'MEMBER') {
+  if (!isPrivileged(session.role)) {
     // Members always see only their own tasks — no overrides allowed
     where = { ...where, assigneeId: session.userId }
   } else {
-    // CEO: optional filters from query params
+    // CEO/ADMIN: optional filters from query params
     if (companyId) where.companyId = companyId
     if (assigneeId) where.assigneeId = assigneeId
   }
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session.userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
-  if (session.role !== 'CEO') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isPrivileged(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const {

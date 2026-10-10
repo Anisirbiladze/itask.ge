@@ -83,7 +83,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initialMe: Me = {
     id: user.id,
     displayName: user.displayName,
-    role: user.role as 'CEO' | 'MEMBER',
+    role: user.role as 'CEO' | 'ADMIN' | 'MEMBER',
     mustChangePw: user.mustChangePw,
     functionGroup: user.functionGroup,
     photoUrl: user.photoUrl ?? null,

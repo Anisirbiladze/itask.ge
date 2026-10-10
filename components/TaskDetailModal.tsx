@@ -293,7 +293,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
   const datesMatch = task.originalDueAt === task.dueAt ||
     (task.originalDueAt && task.dueAt && new Date(task.originalDueAt).toISOString() === new Date(task.dueAt).toISOString())
-  const canChangeDue = me?.role === 'CEO' || true // checked server-side
+  const canChangeDue = me?.role === 'CEO' || me?.role === 'ADMIN' || true // checked server-side
   const availableStatuses = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']
 
   return (
@@ -474,7 +474,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
                     <Avatar name={c.author.displayName} size={24} photoUrl={c.author.photoUrl} />
                     <span style={{ fontWeight: 600, fontSize: 12.5, color: '#312E81' }}>{c.author.displayName}</span>
                     <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>{new Date(c.createdAt).toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                    {(me?.id === c.author.id || me?.role === 'CEO') && (
+                    {(me?.id === c.author.id || me?.role === 'CEO' || me?.role === 'ADMIN') && (
                       <button onClick={() => {
                         fetch(`/api/tasks/${taskId}/comments`, { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ commentId: c.id }) })
                         setComments(prev => { const next = prev.filter(x => x.id !== c.id); _commentCache.set(taskId, next); return next })
@@ -564,7 +564,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
         )}
 
         {/* CEO edit form */}
-        {editing && me?.role === 'CEO' && (
+        {editing && me?.role === 'CEO' || me?.role === 'ADMIN' && (
           <form onSubmit={saveEdit} style={{ padding: '15px 18px', borderTop: '2px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 11 }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('task.edit_title')}</div>
             <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required placeholder={t('task.field_title')}
@@ -607,7 +607,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-          {me?.role === 'CEO' && !editing && (
+          {me?.role === 'CEO' || me?.role === 'ADMIN' && !editing && (
             <button onClick={openEdit} style={actStyle}>{t('task.btn_edit')}</button>
           )}
           <button onClick={() => {
@@ -617,7 +617,7 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
           }} style={actStyle}>
             {t('task.btn_change_due')}
           </button>
-          {me?.role === 'CEO' && (
+          {me?.role === 'CEO' || me?.role === 'ADMIN' && (
             <button onClick={deleteTask} disabled={deleting}
               style={{ ...actStyle, flex: 'none', color: 'var(--stuck)', borderColor: 'var(--stuck)' }}>
               {deleting ? '…' : t('task.btn_delete')}
