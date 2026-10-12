@@ -96,10 +96,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Status change
   if (body.status !== undefined && body.status !== task.status) {
-    const restrictedStatuses = ['TO_APPROVE', 'COMPLETED']
-    if (restrictedStatuses.includes(body.status) && !isPrivileged(session.role)) {
-      return NextResponse.json({ error: 'Only CEOs can set this status' }, { status: 403 })
-    }
     const from = task.status
     const to = body.status
     updates.status = to
