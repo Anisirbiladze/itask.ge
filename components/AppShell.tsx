@@ -142,7 +142,7 @@ export default function AppShell({ children, initialMe, initialCompanies, initia
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: 13.5 }}>{dateStr}</p>
           </div>
-          {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
+          {me && (
             <button
               onClick={() => openNewTask()}
               className="pbtn"

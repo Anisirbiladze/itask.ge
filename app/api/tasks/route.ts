@@ -78,13 +78,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session.userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
-  if (!isPrivileged(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const {
-    title, description, companyId, assigneeId, dueAt,
+    title, description, companyId, dueAt,
     priority, linkUrl,
   } = body
+
+  // Members always create tasks for themselves; privileged users can assign freely
+  const assigneeId = isPrivileged(session.role) ? (body.assigneeId || null) : session.userId
 
   if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 })
 
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest) {
       title,
       description: description || null,
       companyId: companyId || null,
-      assigneeId: assigneeId || null,
+      assigneeId,
       dueAt: dueDate,
       originalDueAt: dueDate, // SET ONCE, NEVER CHANGED
       priority: priority ?? 2,

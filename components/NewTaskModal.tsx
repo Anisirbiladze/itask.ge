@@ -18,7 +18,7 @@ export default function NewTaskModal({ onClose, onCreated }: {
   onClose: () => void
   onCreated: () => void
 }) {
-  const { companies, users: ctxUsers, t } = useApp()
+  const { companies, users: ctxUsers, t, me } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   // Auto-select the first (only) company — no picker needed
@@ -158,14 +158,16 @@ export default function NewTaskModal({ onClose, onCreated }: {
               </div>
             )}
 
-            {/* Assignee (full width — company is auto-set) */}
-            <div style={{ marginBottom: 6 }}>
-              <label style={lblStyle}>{t('new_task.label_assignee')}</label>
-              <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={selStyle}>
-                <option value="">{t('new_task.assign_nobody')}</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
-              </select>
-            </div>
+            {/* Assignee — CEO/ADMIN can pick anyone; MEMBER is auto-assigned to themselves */}
+            {(me?.role === 'CEO' || me?.role === 'ADMIN') && (
+              <div style={{ marginBottom: 6 }}>
+                <label style={lblStyle}>{t('new_task.label_assignee')}</label>
+                <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={selStyle}>
+                  <option value="">{t('new_task.assign_nobody')}</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+                </select>
+              </div>
+            )}
 
 
             {/* Due + Priority */}
