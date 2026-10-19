@@ -68,9 +68,9 @@ export default function BoardClient({
 
   // Filter/sort state is local — instant, no server round-trips
   const [groupBy,        setGroupBy]        = useState<'all' | 'person'>('all')
-  const [dayFilter,      setDayFilter]      = useState<'all' | 'today'>('all')
+  const [dayFilter,      setDayFilter]      = useState<'all' | 'today'>('today')
   const [filter,         setFilter]         = useState('all')
-  const [sortBy,         setSortBy]         = useState<'priority' | 'due' | 'progress'>('priority')
+  const [sortBy,         setSortBy]         = useState<'date' | 'priority' | 'due' | 'progress'>('date')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
 
   const refetch = useCallback(async () => {
@@ -125,14 +125,15 @@ export default function BoardClient({
         result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
     }
 
-    // Today toggle — only my tasks due today
+    // Today toggle — tasks due today for the filtered person (or current user if no filter)
     if (dayFilter === 'today') {
       const todayStr = now.toLocaleDateString('sv') // 'YYYY-MM-DD' in local tz
+      const todayUserId = assigneeFilter !== 'all' ? assigneeFilter : me?.id
       result = result.filter(t =>
         t.dueAt &&
         new Date(t.dueAt).toLocaleDateString('sv') === todayStr &&
         t.status !== 'COMPLETED' &&
-        t.assigneeId === me?.id
+        (todayUserId ? t.assigneeId === todayUserId : true)
       )
     }
 
@@ -143,6 +144,9 @@ export default function BoardClient({
 
     // Sort
     result = [...result].sort((a, b) => {
+      if (sortBy === 'date') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }
       if (sortBy === 'priority') {
         return (b.priority ?? 2) - (a.priority ?? 2)
       }
@@ -267,7 +271,8 @@ export default function BoardClient({
           </select>
         )}
         {/* Sort dropdown */}
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as 'priority' | 'due' | 'progress')} style={dropStyle}>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as 'date' | 'priority' | 'due' | 'progress')} style={dropStyle}>
+          <option value="date">↓ თარიღით (ახალი)</option>
           <option value="priority">↑ პრიორიტეტით</option>
           <option value="due">↑ ვადით</option>
           <option value="progress">↑ შესრულების პროგრესით</option>
