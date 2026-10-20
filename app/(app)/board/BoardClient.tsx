@@ -125,19 +125,14 @@ export default function BoardClient({
         result = result.filter(t => t.dueAt && new Date(t.dueAt) < now && t.status !== 'COMPLETED'); break
     }
 
-    // Today toggle — tasks due today
+    // Today toggle — tasks created today OR with deadline today
     if (dayFilter === 'today') {
       const todayStr = now.toLocaleDateString('sv') // 'YYYY-MM-DD' in local tz
-      // CEO/ADMIN with no specific assignee selected → show all staff today tasks
-      // CEO/ADMIN with a specific assignee → handled by the assigneeFilter below
-      // MEMBER → server already scoped to their tasks, so no extra filter needed
-      const isMember = me?.role === 'MEMBER'
-      result = result.filter(t =>
-        t.dueAt &&
-        new Date(t.dueAt).toLocaleDateString('sv') === todayStr &&
-        t.status !== 'COMPLETED' &&
-        (isMember ? t.assigneeId === me?.id : true)
-      )
+      result = result.filter(t => {
+        const createdToday = new Date(t.createdAt).toLocaleDateString('sv') === todayStr
+        const dueToday = t.dueAt && new Date(t.dueAt).toLocaleDateString('sv') === todayStr
+        return createdToday || dueToday
+      })
     }
 
     // Assignee filter
