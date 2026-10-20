@@ -126,15 +126,20 @@ export default function TaskDetailModal({ taskId, initialData, onClose, onUpdate
   }
 
   async function handleAddLink() {
-    const url = linkInput.trim()
+    let url = linkInput.trim()
     if (!url) return
-    await fetch(`/api/tasks/${taskId}`, {
+    // Ensure URL has a scheme so the DB and browser treat it as a valid link
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+    const res = await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ addLink: { url } }),
     })
+    if (!res.ok) { alert('ლინკის შენახვა ვერ მოხერხდა'); return }
     setLinkInput('')
     setAddingLink(false)
+    // Optimistic update — add link to state immediately; load() will confirm from server
+    setTask(prev => prev ? { ...prev, links: [...(prev.links ?? []), { id: Date.now().toString(), url, label: null }] } : prev)
     load(false)
   }
 
