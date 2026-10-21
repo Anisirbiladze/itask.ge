@@ -140,8 +140,11 @@ export default function BoardClient({
       result = result.filter(t => t.assigneeId === assigneeFilter)
     }
 
-    // Sort
+    // Sort — completed tasks always go to the bottom
     result = [...result].sort((a, b) => {
+      const aDone = a.status === 'COMPLETED' ? 1 : 0
+      const bDone = b.status === 'COMPLETED' ? 1 : 0
+      if (aDone !== bDone) return aDone - bDone
       if (sortBy === 'date') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       }
@@ -155,8 +158,8 @@ export default function BoardClient({
         return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
       }
       if (sortBy === 'progress') {
-        const pa = a.checklistPct ?? (a.status === 'COMPLETED' ? 100 : 0)
-        const pb = b.checklistPct ?? (b.status === 'COMPLETED' ? 100 : 0)
+        const pa = a.checklistPct ?? 0
+        const pb = b.checklistPct ?? 0
         return pb - pa
       }
       return 0
