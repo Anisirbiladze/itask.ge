@@ -67,7 +67,7 @@ function buildPartialTask(d: Record<string, unknown>): TaskDetail {
     parentTask: null,
     checklistItems: [],
     images: [],
-    links: [],
+    links: (d.links as TaskDetail['links']) ?? [],
     tags: (d.tags as TaskDetail['tags']) ?? [],
     events: [],
     settings: { requireReasonOnDueChange: false, checklistDrivesProgress: false },

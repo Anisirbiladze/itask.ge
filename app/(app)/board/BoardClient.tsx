@@ -22,6 +22,7 @@ export interface Task {
   checklistPct: number | null
   checklistTotal: number
   checklistDone: number
+  links?: { id: string; url: string; label: string | null }[]
   commentCount?: number
   comments?: { id: string; content: string; createdAt: string; author: { id: string; displayName: string; photoUrl: string | null } }[]
   createdAt: string

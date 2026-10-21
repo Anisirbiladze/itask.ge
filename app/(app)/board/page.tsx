@@ -19,6 +19,7 @@ export default async function BoardPage() {
       orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
       include: {
         checklistItems: { select: { done: true } },
+        links: { select: { id: true, url: true, label: true } },
         _count: { select: { comments: true } },
         comments: {
           orderBy: { createdAt: 'asc' },
@@ -53,6 +54,7 @@ export default async function BoardPage() {
       createdAt: t.createdAt.toISOString(),
       checklistPct: total > 0 ? Math.round((done / total) * 100) : null,
       checklistTotal: total, checklistDone: done,
+      links: (t.links ?? []).map(l => ({ id: l.id, url: l.url, label: l.label })),
       commentCount: t._count?.comments ?? 0,
       comments: (t.comments ?? []).map(c => ({
         id: c.id, content: c.content, createdAt: c.createdAt.toISOString(),
